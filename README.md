@@ -1,3 +1,4 @@
+<pre>
 MisisVideoAnalytics/
 ├── build/
 │   └── docker/
@@ -7,7 +8,7 @@ MisisVideoAnalytics/
 │       ├── docker_compose.yml
 │       └── backend/
 │           ├── Dockerfile
-│           └── Dockerfile.test
+│           └── test.Dockerfile
 ├── .github/
 │   └── workflows/
 │       └── ci.yml
@@ -23,3 +24,4 @@ MisisVideoAnalytics/
         │           └── test_hello.py
         ├── pyproject.toml
         └── setup.py
+</pre>
