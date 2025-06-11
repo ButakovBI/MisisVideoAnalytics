@@ -18,3 +18,4 @@ jobs:
         run: |
           cd build/docker
           python build_all.py -c images_configuration.json --test
+          docker run --rm misis-test-backend
