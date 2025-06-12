@@ -14,19 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install bootstrap & build wheels
-        run: |
-          pip install --upgrade pip
-          pip install -e build/misis_bootstrap
-          misis-bootstrap
-
       - name: Lint with ruff & flake8
         run: |
           pip install ruff flake8
           ruff check source/
           flake8 --max-line-length 120 build/ source/
 
-      - name: Build Docker images & run all tests
+      - name: Install bootstrap, build wheels and run tests
         run: |
-          cd build/docker
-          python build_all.py -c images_configuration.json --test
+          chmod +x ./run.sh
+          ./run.sh --test
