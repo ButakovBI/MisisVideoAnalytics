@@ -1,12 +1,12 @@
 {
   "backend": {
     "dockerfile": "build/docker/backend/Dockerfile",
-    "LIBS": ["fastapi", "uvicorn[standard]"],
+    "LIBS": ["fastapi", "uvicorn[standard]", "misis_api"],
     "IMAGE_ARGS": {}
   },
   "test_backend": {
     "dockerfile": "build/docker/backend/test.Dockerfile",
-    "LIBS": ["fastapi", "pytest", "httpx"],
+    "LIBS": ["fastapi", "misis_api", "pytest", "httpx"],
     "IMAGE_ARGS": {}
   }
 }

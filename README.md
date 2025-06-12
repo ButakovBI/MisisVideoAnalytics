@@ -1,27 +1,45 @@
 <pre>
 MisisVideoAnalytics/
 ├── build/
-│   └── docker/
-│       ├── get_config.py
-│       ├── images_configuration.json
-│       ├── build_all.py
-│       ├── docker_compose.yml
-│       └── backend/
-│           ├── Dockerfile
-│           └── test.Dockerfile
-├── .github/
-│   └── workflows/
-│       └── ci.yml
+│   ├── docker/
+│   │   ├── backend/
+│   │   │   ├── Dockerfile
+│   │   │   └── test.Dockerfile
+│   │   ├── build_all.py
+│   │   ├── docker_compose.yml
+│   │   ├── get_config.py
+│   │   └── images_configuration.json
+│   └── misis_bootstrap/
+│       └── source/
+│           ├── data/
+│           │   └── versions.json
+│           ├── misis_bootstrap/
+│           │   ├── __init__.py
+│           │   ├── bootstrap.py
+│           │   └── main.py
+│           ├── pyproject.toml
+│           └── setup.py
 └── source/
     └── backend/
-        ├── source/
-        │   ├── __init__.py
-        │   └── main.py
-        ├── tests/
-        │   ├── conftest.py
-        │   └── unit/
-        │       └── base/
-        │           └── test_hello.py
-        ├── pyproject.toml
-        └── setup.py
+        └── misis_api/
+            ├── source/
+            │   ├── __init__.py
+            │   └── main.py
+            ├── tests/
+            │   ├── conftest.py
+            │   └── unit/
+            │       └── base/
+            │           └── test_hello.py
+            ├── pyproject.toml
+            └── setup.py
 </pre>
+
+
+- Перед запуском добавить в окружение или выполнить:
+export REPO_ROOT=/path_to/MisisVideoAnalytics
+
+- Запуск тестов:
+./run.sh --test
+
+- локальное развёртывание:
+./run.sh

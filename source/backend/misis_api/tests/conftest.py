@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from source.main import app
+from misis_api.source.main import app
 
 
 @pytest.fixture
