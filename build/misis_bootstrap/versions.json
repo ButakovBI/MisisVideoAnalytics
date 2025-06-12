@@ -1,6 +1,7 @@
 [
-  { "name": "misis_api", "version": "1.0.0" },
+  { "name": "misis_api", "version": "1.0.1" },
   { "name": "misis_bootstrap", "version": "1.0.0" },
+  { "name": "misis_builder", "version": "1.0.1" },
   { "name": "fastapi", "version": "0.115.12" },
   { "name": "uvicorn", "version": "0.34.3" },
   { "name": "httpx", "version": "0.27.0" },

@@ -8,7 +8,7 @@ rm -rf "$REPO_ROOT/build/whl"
 mkdir -p "$REPO_ROOT/build/whl"
 
 echo "Installing bootstrap..."
-pip3 install -e "$REPO_ROOT/build/misis_bootstrap"
+pip3 install "$REPO_ROOT/build/misis_bootstrap"
 
 echo "Building packages..."
 misis-bootstrap
@@ -19,10 +19,11 @@ if [ -z "$(ls -A "$REPO_ROOT/build/whl")" ]; then
     exit 1
 fi
 
-echo "Bootstrap completed successfully"
+echo "Installing builder..."
+pip3 install "$REPO_ROOT"/build/whl/misis_builder-*.whl
 
 if [[ "$1" == "--test" ]]; then
-    python3 $REPO_ROOT/build/docker/build_all.py --test
+    misis-build-run --test
 else
-    python3 $REPO_ROOT/build/docker/build_all.py
+    misis-build-run
 fi

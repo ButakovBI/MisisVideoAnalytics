@@ -7,7 +7,8 @@ COPY build/whl /whl
 COPY source/backend/ /app
 
 ARG LIBS
-RUN pip3 install ${LIBS} --find-links /whl && rm -rf /whl
+RUN pip3 install --no-cache-dir ${LIBS} --find-links /whl && \
+    rm -rf /whl /root/.cache/pip
 ENV PYTHONPATH=/app
 
 CMD ["pytest", "-q"]

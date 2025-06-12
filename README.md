@@ -5,17 +5,22 @@ MisisVideoAnalytics/
 │   │   ├── backend/
 │   │   │   ├── Dockerfile
 │   │   │   └── test.Dockerfile
-│   │   ├── build_all.py
 │   │   ├── docker_compose.yml
-│   │   ├── get_config.py
 │   │   └── images_configuration.json
-│   └── misis_bootstrap/
+│   ├── misis_bootstrap/
+│   │   └── source/
+│   │       ├── misis_bootstrap/
+│   │       │   ├── __init__.py
+│   │       │   ├── bootstrap.py
+│   │       │   ├── main.py
+│   │       │   └── package_manager.py
+│   │       ├── pyproject.toml
+│   │       ├── setup.py
+│   │       └── versions.json
+│   └── misis_builder/
 │       └── source/
-│           ├── data/
-│           │   └── versions.json
-│           ├── misis_bootstrap/
+│           ├── misis_builder/
 │           │   ├── __init__.py
-│           │   ├── bootstrap.py
 │           │   └── main.py
 │           ├── pyproject.toml
 │           └── setup.py
