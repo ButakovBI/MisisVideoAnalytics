@@ -1,12 +1,27 @@
 {
-  "backend": {
-    "dockerfile": "build/docker/backend/Dockerfile",
-    "LIBS": ["fastapi", "uvicorn[standard]", "misis_api"],
+  "api_service": {
+    "dockerfile": "build/docker/api_service/Dockerfile",
+    "LIBS": ["misis_scenario_api"],
+    "IMAGE_ARGS": {}
+  },
+  "inference_service": {
+    "dockerfile": "build/docker/inference_service/Dockerfile",
+    "LIBS": ["misis_inference"],
+    "IMAGE_ARGS": {}
+  },
+  "orchestrator_service": {
+    "dockerfile": "build/docker/orchestrator_service/Dockerfile",
+    "LIBS": ["misis_healthcheck", "misis_orchestrator"],
+    "IMAGE_ARGS": {}
+  },
+  "runner_service": {
+    "dockerfile": "build/docker/runner_service/Dockerfile",
+    "LIBS": ["misis_healthcheck", "misis_runner"],
     "IMAGE_ARGS": {}
   },
   "test_backend": {
-    "dockerfile": "build/docker/backend/test.Dockerfile",
-    "LIBS": ["fastapi", "misis_api", "pytest", "httpx"],
+    "dockerfile": "build/docker/api_service/test.Dockerfile",
+    "LIBS": ["misis_scenario_api"],
     "IMAGE_ARGS": {}
   }
 }
