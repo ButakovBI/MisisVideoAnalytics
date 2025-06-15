@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY build/whl /whl
 
-COPY source/api_service/ /app
+COPY source/runner_service/ /app
 
 ARG LIBS
 RUN pip3 install --no-cache-dir ${LIBS} --find-links /whl && \

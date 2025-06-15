@@ -19,9 +19,24 @@
     "LIBS": ["misis_healthcheck", "misis_runner"],
     "IMAGE_ARGS": {}
   },
-  "test_backend": {
+  "test_api_service": {
     "dockerfile": "build/docker/api_service/test.Dockerfile",
     "LIBS": ["misis_scenario_api"],
+    "IMAGE_ARGS": {}
+  },
+  "test_inference_service": {
+    "dockerfile": "build/docker/inference_service/test.Dockerfile",
+    "LIBS": ["misis_inference"],
+    "IMAGE_ARGS": {}
+  },
+  "test_orchestrator_service": {
+    "dockerfile": "build/docker/orchestrator_service/test.Dockerfile",
+    "LIBS": ["misis_healthcheck", "misis_orchestrator"],
+    "IMAGE_ARGS": {}
+  },
+  "test_runner_service": {
+    "dockerfile": "build/docker/runner_service/test.Dockerfile",
+    "LIBS": ["misis_healthcheck", "misis_runner"],
     "IMAGE_ARGS": {}
   }
 }
