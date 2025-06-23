@@ -1,56 +1,71 @@
-from fastapi import APIRouter, Depends
-from uuid import UUID
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from misis_scenario_api.app.command_handler import ScenarioCommandHandler
-from misis_scenario_api.app.query_handler import ScenarioQueryHandler
-from misis_scenario_api.kafka.kafka_producer import get_kafka_producer
-from misis_scenario_api.models.predictions_response import PredictionsResponse
+from misis_scenario_api.app.web.scenario_service import ScenarioService
+from misis_scenario_api.database.database import get_db_session
+from misis_scenario_api.s3.s3_client import S3Client
+from misis_scenario_api.kafka.producer import Producer
 from misis_scenario_api.models.scenario_status_response import ScenarioStatusResponse
-from misis_scenario_api.models.scenario_create_request import ScenarioCreateRequest
-from misis_scenario_api.models.scenario_update_request import ScenarioUpdateRequest
-from misis_scenario_api.orchestrator_client import get_orchestrator_client
 
 router = APIRouter()
 
 
-def get_command_handler() -> ScenarioCommandHandler:
-    return ScenarioCommandHandler(get_kafka_producer())
-
-
-def get_query_handler() -> ScenarioQueryHandler:
-    return ScenarioQueryHandler(get_orchestrator_client())
-
-
-@router.post("/scenario/", response_model=ScenarioStatusResponse, status_code=201)
+@router.post(
+    "/scenario/",
+    response_model=ScenarioStatusResponse,
+    status_code=status.HTTP_202_ACCEPTED
+)
 async def create_scenario(
-    request: ScenarioCreateRequest,
-    handler: ScenarioCommandHandler = Depends(get_command_handler)
+    video: UploadFile,
+    db: AsyncSession = Depends(get_db_session),
+    producer: Producer = Depends(),
+    s3_client: S3Client = Depends()
 ):
-    scenario_id = handler.create_scenario(request)
-    return {"status": "init_startup", "scenario_id": scenario_id}
+    try:
+        service = ScenarioService(db=db, producer=producer, s3_client=s3_client)
+        res = await service.create_scenario(video=video)
+        return res
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error: {e}. Try to restart scenario"
+        )
 
 
-@router.post("/scenario/{scenario_id}/", status_code=202)
-async def update_scenario(
-    scenario_id: str,
-    request: ScenarioUpdateRequest,
-    handler: ScenarioCommandHandler = Depends(get_command_handler)
-):
-    handler.update_scenario(scenario_id, request)
-    return {"status": "command_accepted"}
+# @router.post(
+#     "/scenario/{scenario_id}/",
+#     response_model=ScenarioStatusResponse,
+#     status_code=status.HTTP_202_ACCEPTED
+# )
+# async def update_scenario(
+#     scenario_id: UUID,
+#     request: ScenarioUpdateRequest,
+#     handler: ScenarioCommandHandler = Depends(get_command_handler)
+# ):
+#     try:
+#         status = handler.update_scenario(scenario_id, request.command)
+#         return status
+#     except ValueError as e:
+#         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("/scenario/{scenario_id}/", response_model=ScenarioStatusResponse)
-async def get_scenario_status(
-    scenario_id: UUID,
-    handler: ScenarioQueryHandler = Depends(get_query_handler)
-):
-    return handler.get_status(scenario_id)
+# @router.get(
+#     "/scenario/{scenario_id}/",
+#     response_model=ScenarioStatusResponse
+# )
+# async def get_scenario_status(
+#     scenario_id: UUID,
+#     handler: ScenarioQueryHandler = Depends(get_query_handler)
+# ):
+#     return await handler.get_status(scenario_id)
 
 
-@router.get("/prediction/{scenario_id}/", response_model=PredictionsResponse)
-async def get_predictions(
-    scenario_id: UUID,
-    handler: ScenarioQueryHandler = Depends(get_query_handler)
-):
-    return handler.get_predictions(scenario_id)
+# @router.get(
+#     "/prediction/{scenario_id}/",
+#     response_model=PredictionsResponse
+# )
+# async def get_predictions(
+#     scenario_id: UUID,
+#     handler: ScenarioQueryHandler = Depends(get_query_handler)
+# ):
+#     return await handler.get_predictions(scenario_id)

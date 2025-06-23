@@ -1,6 +1,5 @@
 import os
 import httpx
-import logging
 from uuid import UUID
 
 from misis_scenario_api.models.predictions_response import PredictionsResponse
@@ -9,32 +8,25 @@ from misis_scenario_api.models.scenario_status_response import ScenarioStatusRes
 
 class OrchestratorClient:
     def __init__(self, base_url: str):
-        self.base_url = base_url
+        self._base_url = base_url
+        self._client = httpx.AsyncClient(base_url=base_url, timeout=5)
 
-    def get_scenario_status(self, scenario_id: UUID) -> ScenarioStatusResponse:
-        try:
-            with httpx.Client() as client:
-                response = client.get(f"{self.base_url}/scenario/{scenario_id}")
-                response.raise_for_status()
-                return ScenarioStatusResponse(**response.json())
-        except httpx.RequestError as e:
-            self._logger().error(f"Request to orchestrator failed: {e}")
-            raise
+    async def get_scenario_status(self, scenario_id: UUID) -> ScenarioStatusResponse:
+        resp = await self._client.get(f"/scenario/{scenario_id}")
+        resp.raise_for_status()
+        data = resp.json()
+        return ScenarioStatusResponse(**data)
 
-    def get_predictions(self, scenario_id: UUID) -> PredictionsResponse:
-        try:
-            with httpx.Client() as client:
-                response = client.get(f"{self.base_url}/prediction/{scenario_id}")
-                response.raise_for_status()
-                return PredictionsResponse(**response.json())
-        except httpx.RequestError as e:
-            self._logger().error(f"Request to orchestrator failed: {e}")
-            raise
+    async def get_predictions(self, scenario_id: UUID) -> PredictionsResponse:
+        resp = await self._client.get(f"/prediction/{scenario_id}")
+        resp.raise_for_status()
+        data = resp.json()
+        return PredictionsResponse(**data)
 
-    def _logger(self):
-        return logging.getLogger(__name__)
+    async def close(self):
+        await self._client.aclose()
 
 
 def get_orchestrator_client() -> OrchestratorClient:
-    base_url = os.getenv("ORCHESTRATOR_URL", "http://orchestrator:8000")
-    return OrchestratorClient(base_url)
+    url = os.getenv("ORCHESTRATOR_URL", "http://orchestrator:8001")
+    return OrchestratorClient(url)
