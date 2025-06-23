@@ -2,7 +2,7 @@ import os
 import httpx
 from uuid import UUID
 
-from misis_scenario_api.models.predictions_response import PredictionsResponse
+from MisisVideoAnalytics.source.api_service.misis_scenario_api.source.misis_scenario_api.models.prediction_response import PredictionsResponse
 from misis_scenario_api.models.scenario_status_response import ScenarioStatusResponse
 
 

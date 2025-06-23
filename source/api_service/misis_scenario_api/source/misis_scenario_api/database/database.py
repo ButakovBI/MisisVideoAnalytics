@@ -10,6 +10,7 @@ engine = create_async_engine(
     isolation_level="REPEATABLE READ",
     pool_pre_ping=True
 )
+
 async_session = sessionmaker(
     bind=engine,
     class_=AsyncSession,

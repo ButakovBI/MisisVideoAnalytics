@@ -1,11 +1,11 @@
 import setuptools
 
 PACKAGE_NAME = 'misis_scenario_api'
-VERSION = '2.0.0'
+VERSION = '2.1.1'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [
-    "confluent_kafka",
+    "aiokafka",
     "fastapi",
     "httpx",
     "pydantic",
