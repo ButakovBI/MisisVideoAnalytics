@@ -6,6 +6,8 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - video-analytics-network
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
@@ -14,15 +16,21 @@ services:
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 60s
+    networks:
+      - video-analytics-network
+
+  minio:
+    image: 
 
   postgres:
     image: postgres:13-alpine
@@ -38,6 +46,39 @@ services:
       timeout: 5s
       retries: 5
 
+  orchestrator_service:
+    image: misis-orchestrator_service
+    ports:
+      - "8001:8001"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DATABASE_URL: postgresql://postgres:postgres@postgres/analytics
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/docs"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  inference_service:
+    image: misis-inference_service
+    ports:
+      - "8002:8002"
+    environment:
+      MODEL_NAME: yolov8n
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/docs"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    depends_on:
+      kafka:
+        condition: service_healthy
+
   api_service:
     image: misis-api_service
     ports:
@@ -45,38 +86,32 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       ORCHESTRATOR_URL: http://orchestrator_service:8001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on:
       kafka:
         condition: service_healthy
       orchestrator_service:
-        condition: service_started
-
-  orchestrator_service:
-    image: misis-orchestrator_service
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      DATABASE_URL: postgresql://postgres:postgres@postgres/analytics
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
         condition: service_healthy
 
   runner_service:
     image: misis-runner_service
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      INFERENCE_URL: http://inference_service:8002/predict
+      INFERENCE_URL: http://inference_service:8002
+    healthcheck:
+      test: ["CMD", "exit", "0"]
+      interval: 30s
+      timeout: 5s
+      retries: 1
     depends_on:
       inference_service:
-        condition: service_started
+        condition: service_healthy
       kafka:
         condition: service_healthy
-
-  inference_service:
-    image: misis-inference_service
-    environment:
-      MODEL_NAME: yolov8n
 
 volumes:
   postgres_data:

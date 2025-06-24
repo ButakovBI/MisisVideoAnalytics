@@ -16,9 +16,6 @@ RUN pip install --no-cache-dir ${LIBS} --find-links /whl/ && \
 
 ENV PYTHONPATH=/app
 
-HEALTHCHECK --interval=30s --timeout=3s \
-    CMD curl -f http://localhost:8001/docs || exit 1
-
 USER appuser
 
-CMD ["uvicorn", "misis_orchestrator.app.web.app:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["python", "-m", "misis_orchestrator.main.main"]

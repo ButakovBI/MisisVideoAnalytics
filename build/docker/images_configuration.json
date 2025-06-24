@@ -11,12 +11,12 @@
   },
   "orchestrator_service": {
     "dockerfile": "build/docker/orchestrator_service/Dockerfile",
-    "LIBS": ["misis_healthcheck", "misis_orchestrator"],
+    "LIBS": ["misis_orchestrator"],
     "IMAGE_ARGS": {}
   },
   "runner_service": {
     "dockerfile": "build/docker/runner_service/Dockerfile",
-    "LIBS": ["misis_healthcheck", "misis_runner"],
+    "LIBS": ["misis_runner"],
     "IMAGE_ARGS": {}
   },
   "test_api_service": {
@@ -31,12 +31,12 @@
   },
   "test_orchestrator_service": {
     "dockerfile": "build/docker/orchestrator_service/test.Dockerfile",
-    "LIBS": ["misis_healthcheck", "misis_orchestrator", "pytest"],
+    "LIBS": ["misis_orchestrator", "pytest"],
     "IMAGE_ARGS": {}
   },
   "test_runner_service": {
     "dockerfile": "build/docker/runner_service/test.Dockerfile",
-    "LIBS": ["misis_healthcheck", "misis_runner", "pytest"],
+    "LIBS": ["misis_runner", "pytest"],
     "IMAGE_ARGS": {}
   }
 }

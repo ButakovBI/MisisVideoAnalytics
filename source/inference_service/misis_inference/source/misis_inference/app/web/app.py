@@ -1,20 +1,14 @@
-from fastapi import FastAPI, UploadFile, File
-import numpy as np
-import cv2
+from fastapi import FastAPI
 
-from misis_inference.app.prediction_service import PredictionService
+from misis_inference.app.web.routers import router
 
 
-app = FastAPI(title="MISIS Inference Service")
-prediction_service = PredictionService()
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="MISIS Inference service",
+    )
+    app.include_router(router)
+    return app
 
 
-@app.post("/predict")
-async def predict(image: UploadFile = File(...)):
-    try:
-        contents = await image.read()
-        nparr = np.frombuffer(contents, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        return prediction_service.predict(img)
-    except Exception as e:
-        return {"error": str(e)}
+app = create_app()

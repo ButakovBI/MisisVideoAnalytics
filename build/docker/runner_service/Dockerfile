@@ -18,4 +18,4 @@ ENV PYTHONPATH=/app
 
 USER appuser
 
-CMD ["python", "-m", "misis_runner.main"]
+CMD ["python", "-m", "misis_runner.main.main"]

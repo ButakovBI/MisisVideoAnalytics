@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     DB_USER: str
 
     KAFKA_BOOTSTRAP_SERVERS: str
-    KAFKA_SCENARIO_TOPIC: str = "scenario_events"
 
     class Config:
         env_file = ".env"

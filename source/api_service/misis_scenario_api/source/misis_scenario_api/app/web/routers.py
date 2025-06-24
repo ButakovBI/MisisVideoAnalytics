@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from MisisVideoAnalytics.source.api_service.misis_scenario_api.source.misis_scenario_api.models.constants.command_type import CommandType
+from misis_scenario_api.models.constants.command_type import CommandType
 from misis_scenario_api.app.web.scenario_service import ScenarioService
 from misis_scenario_api.database.database import get_db_session
 from misis_scenario_api.s3.s3_client import S3Client

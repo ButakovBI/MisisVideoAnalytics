@@ -5,6 +5,7 @@ VERSION = '2.1.1'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [
+    "aioboto3",
     "aiokafka",
     "fastapi",
     "httpx",

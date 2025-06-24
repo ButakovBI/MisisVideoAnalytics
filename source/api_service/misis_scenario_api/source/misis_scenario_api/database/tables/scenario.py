@@ -7,6 +7,6 @@ from misis_scenario_api.database.database import Base
 class Scenario(Base):
     __tablename__ = "scenario"
 
-    id         = Column(UUID(as_uuid=True), primary_key=True)
-    status     = Column(String(50), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    status = Column(String(50), nullable=False)
     video_path = Column(String(255), nullable=False)

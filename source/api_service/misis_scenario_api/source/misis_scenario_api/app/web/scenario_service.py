@@ -71,13 +71,13 @@ class ScenarioService:
                     }
                 )
                 break
-            except Exception:
+            except Exception as e:
                 if attempt == kafka_attempts - 1:
                     logger.error("[Create] Final attempt failed to send Kafka event")
                     raise
                 else:
-                    logger.warning("[Create] Kafka send failed, attempt %d/%d: %s", 
-                                    attempt + 1, kafka_attempts, str(e))
+                    logger.warning("[Create] Kafka send failed, attempt %d/%d: %s",
+                                   attempt + 1, kafka_attempts, str(e))
                     await asyncio.sleep(1)
         logger.debug("[Create] Sent event for scenario %s to kafka", scenario_id)
 
@@ -85,10 +85,10 @@ class ScenarioService:
             scenario_id=scenario_id,
             status=ScenarioStatus.INIT_STARTUP
         )
-    
+
     async def update_scenario(self, scenario_id: UUID, command: CommandType) -> ScenarioStatusResponse:
         logger.info("[Update] Update scenario %s with command %s", scenario_id, command.value)
-        
+
         try:
             async with self.db.begin() as transaction:
                 scenario = await self.db.execute(
@@ -99,7 +99,7 @@ class ScenarioService:
                 if not scenario:
                     logger.error("[Update] Scenario %s not found", scenario_id)
                     raise NoResultFound("[Update] Scenario not found")
-                
+
                 current_status = scenario.status
                 new_status = None
                 event_type = None
@@ -146,7 +146,7 @@ class ScenarioService:
                         event_type = ScenarioStatus.INIT_SHUTDOWN
 
                 if new_status is None:
-                        raise ValueError(f"Invalid command '{command}' for current status '{current_status}'")
+                    raise ValueError(f"Invalid command '{command}' for current status '{current_status}'")
 
                 await self.db.execute(
                     update(Scenario)
@@ -174,7 +174,7 @@ class ScenarioService:
             }
             if event_type == ScenarioStatus.INIT_STARTUP:
                 kafka_payload["video_path"] = scenario.video_path
-            
+
             kafka_attempts = 3
             try:
                 for attempt in range(kafka_attempts):
@@ -189,8 +189,8 @@ class ScenarioService:
                             logger.error("[Update] Final attempt failed to send Kafka event")
                             raise
                         else:
-                            logger.warning("[Update] Kafka send failed, attempt %d/%d: %s", 
-                                        attempt + 1, kafka_attempts, str(e))
+                            logger.warning("[Update] Kafka send failed, attempt %d/%d: %s",
+                                           attempt + 1, kafka_attempts, str(e))
                             await asyncio.sleep(1)
                 logger.debug("[Update] Event sent to Kafka for scenario %s", scenario_id)
             except Exception as e:
@@ -244,7 +244,7 @@ class ScenarioService:
 
     # async def get_predictions(self, scenario_id: UUID) -> list[PredictionResponse]:
     #     logger.info("[Prediction] Getting predictions for scenario %s", scenario_id)
-        
+
     #     try:
     #         # Проверяем существование сценария
     #         scenario_exists = await self.db.execute(
@@ -276,7 +276,7 @@ class ScenarioService:
     #             )
     #             for pred in predictions
     #         ]
-            
+
     #     except HTTPException:
     #         raise
     #     except Exception as e:
