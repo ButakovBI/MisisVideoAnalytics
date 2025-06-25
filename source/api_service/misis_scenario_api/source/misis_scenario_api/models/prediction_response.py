@@ -1,4 +1,5 @@
 from uuid import UUID
+
 from pydantic import BaseModel
 
 from misis_scenario_api.models.bounding_box import BoundingBox

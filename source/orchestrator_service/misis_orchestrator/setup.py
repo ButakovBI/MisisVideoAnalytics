@@ -1,21 +1,14 @@
 import setuptools
-
 from misis_bootstrap.package_manager import PackageManager
 
 PACKAGE_NAME = 'misis_orchestrator'
-VERSION = '1.0.1'
+VERSION = '2.0.0'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [
-    "confluent_kafka",
-    "fastapi",
-    "httpx",
-    "psycopg2-binary",
+    "aiokafka",
     "pydantic",
     "sqlalchemy",
-    "uvicorn",
-
-    "misis_healthcheck"
 ]
 
 setuptools.setup(

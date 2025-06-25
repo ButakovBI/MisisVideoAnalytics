@@ -1,10 +1,14 @@
 import asyncio
 import json
+import logging
+from uuid import UUID
 
 from aiokafka import AIOKafkaConsumer
 
-from misis_runner.kafka.producer import settings
+from misis_runner.app.config import settings
 from misis_runner.models.constants.kafka_topic import KafkaTopic
+
+logger = logging.getLogger(__name__)
 
 
 class Consumer:
@@ -33,10 +37,17 @@ class Consumer:
         async for msg in self.start_consumer:
             if not self._is_running:
                 break
-            data = json.loads(msg.value)
-            if data.get("type") == "start":
-                await handler(data["scenario_id"], data["video_path"])
-                await self.start_consumer.commit()
+            try:
+                data = json.loads(msg.value)
+                if data.get("type") == "start":
+                    if not all(k in data for k in ["scenario_id", "video_path"]):
+                        raise ValueError("Invalud message format")
+                    await handler(UUID(data["scenario_id"]), data["video_path"])
+                    await self.start_consumer.commit()
+            except json.JSONDecodeError:
+                logger.error("[Runner] Consumer: invalid message format")
+            except Exception as e:
+                logger.error(f"[Runner] Consumer: start command processing failed: {str(e)}")
 
     async def _consume_stops(self, handler):
         async for msg in self.stop_consumer:

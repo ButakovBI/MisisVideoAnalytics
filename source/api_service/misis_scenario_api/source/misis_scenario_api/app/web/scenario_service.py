@@ -1,20 +1,22 @@
-import asyncio
-from datetime import datetime
+import logging
 from uuid import UUID, uuid4
+
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import insert, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound
-import logging
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from misis_scenario_api.models.constants.command_type import CommandType
-from misis_scenario_api.models.constants.kafka_topic import KafkaTopic
+from misis_scenario_api.app.config import settings
 from misis_scenario_api.database.tables.outbox import Outbox
-from misis_scenario_api.models.constants.scenario_status import ScenarioStatus
-from misis_scenario_api.s3.s3_client import S3Client
-from misis_scenario_api.models.scenario_status_response import ScenarioStatusResponse
 from misis_scenario_api.database.tables.scenario import Scenario
 from misis_scenario_api.kafka.producer import Producer
+from misis_scenario_api.models.bounding_box import BoundingBox
+from misis_scenario_api.models.constants.command_type import CommandType
+from misis_scenario_api.models.constants.scenario_status import ScenarioStatus
+from misis_scenario_api.models.prediction_response import PredictionResponse
+from misis_scenario_api.models.scenario_status_response import \
+    ScenarioStatusResponse
+from misis_scenario_api.s3.s3_client import S3Client
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ class ScenarioService:
         scenario_id = uuid4()
         s3_video_path = f"scenarios/{scenario_id}/{video.filename}"
         await self.s3_client.upload_video(
-            bucket="videos",
+            bucket=settings.S3_VIDEOS_BUCKET,
             s3_link=s3_video_path,
             video_bytes=await video.read(),
         )
@@ -58,28 +60,6 @@ class ScenarioService:
 
             await transaction.commit()
             logger.info("[Create] Transaction committed for %s", scenario_id)
-
-        kafka_attempts = 3
-        for attempt in range(kafka_attempts):
-            try:
-                await self.producer.send(
-                    KafkaTopic.SCENARIO_EVENTS.value,
-                    {
-                        "event_type": ScenarioStatus.INIT_STARTUP,
-                        "scenario_id": str(scenario_id),
-                        "video_path": s3_video_path
-                    }
-                )
-                break
-            except Exception as e:
-                if attempt == kafka_attempts - 1:
-                    logger.error("[Create] Final attempt failed to send Kafka event")
-                    raise
-                else:
-                    logger.warning("[Create] Kafka send failed, attempt %d/%d: %s",
-                                   attempt + 1, kafka_attempts, str(e))
-                    await asyncio.sleep(1)
-        logger.debug("[Create] Sent event for scenario %s to kafka", scenario_id)
 
         return ScenarioStatusResponse(
             scenario_id=scenario_id,
@@ -167,39 +147,6 @@ class ScenarioService:
                 await transaction.commit()
                 logger.info("[Update] Scenario %s status updated to %s", scenario_id, new_status)
 
-            kafka_payload = {
-                "event_type": event_type,
-                "scenario_id": str(scenario_id),
-                "timestamp": datetime.utcnow().isoformat()
-            }
-            if event_type == ScenarioStatus.INIT_STARTUP:
-                kafka_payload["video_path"] = scenario.video_path
-
-            kafka_attempts = 3
-            try:
-                for attempt in range(kafka_attempts):
-                    try:
-                        await self.producer.send(
-                            KafkaTopic.SCENARIO_EVENTS.value,
-                            kafka_payload
-                        )
-                        break
-                    except Exception as e:
-                        if attempt == kafka_attempts - 1:
-                            logger.error("[Update] Final attempt failed to send Kafka event")
-                            raise
-                        else:
-                            logger.warning("[Update] Kafka send failed, attempt %d/%d: %s",
-                                           attempt + 1, kafka_attempts, str(e))
-                            await asyncio.sleep(1)
-                logger.debug("[Update] Event sent to Kafka for scenario %s", scenario_id)
-            except Exception as e:
-                logger.error("[Update] Failed to send Kafka event: %s", str(e))
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="[Update] Failed to publish scenario event"
-                )
-
             return ScenarioStatusResponse(
                 scenario_id=scenario_id,
                 status=new_status
@@ -242,46 +189,38 @@ class ScenarioService:
                 detail=f"Failed to get scenario status: {str(e)}"
             )
 
-    # async def get_predictions(self, scenario_id: UUID) -> list[PredictionResponse]:
-    #     logger.info("[Prediction] Getting predictions for scenario %s", scenario_id)
+    async def get_predictions(self, scenario_id: UUID) -> list[PredictionResponse]:
+        logger.info("[Prediction] Getting predictions for scenario %s", scenario_id)
 
-    #     try:
-    #         # Проверяем существование сценария
-    #         scenario_exists = await self.db.execute(
-    #             select(Scenario.id)
-    #             .where(Scenario.id == scenario_id)
-    #         )
-    #         if not scenario_exists.scalar_one_or_none():
-    #             raise HTTPException(
-    #                 status_code=status.HTTP_404_NOT_FOUND,
-    #                 detail="Scenario not found"
-    #             )
+        try:
+            scenario_exists = await self.db.execute(
+                select(Scenario.id)
+                .where(Scenario.id == scenario_id)
+            )
+            if not scenario_exists.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Scenario not found"
+                )
 
-    #         # Получаем предсказания
-    #         result = await self.db.execute(
-    #             select(Prediction)
-    #             .where(Prediction.scenario_id == scenario_id)
-    #             .order_by(Prediction.timestamp)
-    #         )
-    #         predictions = result.scalars().all()
+            predictions = await self.s3_client.get_predictions(scenario_id=scenario_id)
 
-    #         logger.debug("[Prediction] Found %d predictions for %s", len(predictions), scenario_id)
-    #         return [
-    #             PredictionResponse(
-    #                 prediction_id=pred.id,
-    #                 scenario_id=pred.scenario_id,
-    #                 frame_number=pred.frame_number,
-    #                 boxes=pred.boxes,
-    #                 timestamp=pred.timestamp
-    #             )
-    #             for pred in predictions
-    #         ]
+            logger.debug(f"[Prediction] Found {len(predictions)} predictions for {scenario_id}")
+            return [
+                PredictionResponse(
+                    scenario_id=scenario_id,
+                    predictions=[
+                        BoundingBox(**box) for box in pred["predictions"]
+                    ]
+                )
+                for pred in predictions
+            ]
 
-    #     except HTTPException:
-    #         raise
-    #     except Exception as e:
-    #         logger.error("[Prediction] Failed to get predictions for %s: %s", scenario_id, str(e))
-    #         raise HTTPException(
-    #             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    #             detail=f"Failed to get predictions: {str(e)}"
-    #         )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("[Prediction] Failed to get predictions for %s: %s", scenario_id, str(e))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to get predictions: {str(e)}"
+            )

@@ -1,8 +1,10 @@
 from typing import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from misis_orchestrator.app.config import settings
+
 
 engine = create_async_engine(
     f"postgresql+asyncpg://{settings.DB_USER}:{settings.DB_PASSWORD} \

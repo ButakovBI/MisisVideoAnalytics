@@ -1,5 +1,6 @@
 import datetime
-from sqlalchemy import Boolean, Column, JSON, DateTime, String
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 
 from misis_scenario_api.database.database import Base

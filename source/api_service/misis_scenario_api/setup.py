@@ -1,7 +1,7 @@
 import setuptools
 
 PACKAGE_NAME = 'misis_scenario_api'
-VERSION = '2.1.1'
+VERSION = '2.2.0'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [

@@ -1,19 +1,16 @@
 import setuptools
 
-from misis_bootstrap.package_manager import PackageManager
-
 PACKAGE_NAME = 'misis_inference'
-VERSION = '1.0.0'
+VERSION = '2.0.1'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [
     "fastapi",
     "httpx",
-    "opencv-python-headless",
-    "numpy",
     "pydantic",
+    "python-multipart",
+    "ultralytics",
     "uvicorn[standard]",
-    "python-multipart"
 ]
 
 setuptools.setup(
@@ -23,5 +20,5 @@ setuptools.setup(
     description='Misis Inference',
     packages=setuptools.find_packages(where='source'),
     package_dir={'': 'source'},
-    install_requires=PackageManager.get_versioned_packages(REQUIRES)
+    install_requires=REQUIRES
 )

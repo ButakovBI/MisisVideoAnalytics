@@ -1,5 +1,6 @@
 
 import logging
+
 from fastapi import APIRouter, HTTPException, UploadFile, status
 
 from misis_inference.app.web.prediction_service import PredictionService
@@ -18,8 +19,8 @@ async def predict(file: UploadFile):
     try:
         return await PredictionService().predict(file)
     except Exception as e:
-        logger.error("Prediction of file %s failed: %s", file, str(e))
+        logger.error("[Inference] Prediction of file %s failed: %s", file, str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing frame: {str(e)}. try again"
+            detail=f"[Inference] Error processing frame: {str(e)}. try again"
         )

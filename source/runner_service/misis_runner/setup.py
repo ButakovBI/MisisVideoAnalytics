@@ -1,17 +1,14 @@
 import setuptools
 
-from misis_bootstrap.package_manager import PackageManager
-
 PACKAGE_NAME = 'misis_runner'
-VERSION = '1.0.0'
+VERSION = '2.0.0'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [
+    'aiokafka',
+    'aioboto3',
+    'httpx',
     'opencv-python-headless',
-    'requests',
-    'confluent-kafka',
-
-    "misis_healthcheck"
 ]
 
 setuptools.setup(
@@ -21,5 +18,5 @@ setuptools.setup(
     description='Misis Runner',
     packages=setuptools.find_packages(where='source'),
     package_dir={'': 'source'},
-    install_requires=PackageManager.get_versioned_packages(REQUIRES),
+    install_requires=REQUIRES,
 )

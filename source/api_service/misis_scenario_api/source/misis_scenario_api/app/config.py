@@ -3,7 +3,8 @@ from pydantic import BaseSettings
 
 class Settings(BaseSettings):
     S3_ACCESS_KEY: str
-    S3_BUCKET: str
+    S3_VIDEOS_BUCKET: str
+    S3_PREDICTIONS_BUCKET: str
     S3_ENDPOINT: str
     S3_SECRET_KEY: str
 

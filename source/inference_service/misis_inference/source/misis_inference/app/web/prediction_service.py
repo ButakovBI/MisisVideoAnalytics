@@ -1,9 +1,9 @@
-import time
-from fastapi import UploadFile
 import io
-from PIL import Image
 import logging
+import time
 
+from fastapi import UploadFile
+from PIL import Image
 from ultralytics import YOLO
 
 from misis_inference.models.prediction_response import PredictionResponse
@@ -16,9 +16,11 @@ class PredictionService:
         self.model = YOLO('yolov8n.pt')
 
     async def predict(self, file: UploadFile) -> PredictionResponse:
-        logger.info("[Inference predict] Do prediction for frame %s", file.filename)
+        logger.info(f"[Inference] Do prediction for frame {file.filename}")
         bytes = await file.read()
-        image = Image.open(io.BytesIO(bytes)).convert("RGB")
+        image = Image.open(io.BytesIO(bytes))
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
         try:
             results = self.model.predict(source=image)
@@ -36,8 +38,8 @@ class PredictionService:
                     }
                     predictions.append(pred)
             time.sleep(1)
-            logger.error(f"Prediction done for frame {file.filename}")
+            logger.error(f"[Inference] Prediction done for frame {file.filename}")
             return predictions
         except Exception as e:
-            logger.error(f"Prediction failed: {str(e)}")
+            logger.error(f"[Inference] Prediction failed: {str(e)}")
             raise
