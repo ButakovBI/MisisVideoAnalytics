@@ -62,4 +62,6 @@ class BuildRunner:
             print(f"Running {image} with override: {' '.join(cmd_override)}…")
         else:
             print(f"Running {image}…")
-        subprocess.check_call(cmd)
+        result = subprocess.run(cmd)
+        if result.returncode not in (0, 5):
+            raise subprocess.CalledProcessError(result.returncode, cmd)
