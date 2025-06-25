@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings
 
 
@@ -17,9 +18,9 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str
 
     HEARTBEAT_INTERVAL: int = 5  # seconds
-    INFERENCE_SERVICE_URL: str = "http://localhost:8001"
+    INFERENCE_SERVICE_URL: str = "http://localhost:8002"
     MAX_CONCURRENT_SCENARIOS: int = 1
-    RUNNER_ID: str = "runner_1"
+    RUNNER_ID: str = os.getenv('HOSTNAME', 'runner_1')
 
     class Config:
         env_file = ".env"

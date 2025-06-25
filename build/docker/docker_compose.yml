@@ -4,6 +4,8 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
     restart: on-failure
+    ports:
+      - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -15,13 +17,16 @@ services:
     restart: on-failure
     depends_on:
       - zookeeper
+    ports:
+      - "9092:9092"
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_CREATE_TOPICS: "scenario_events:1:1,runner_commands:1:1,heartbeats:1:1"
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 10s
@@ -32,93 +37,143 @@ services:
       - video-analytics-network
 
   minio:
-    image: 
+    image: bitnami/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - video-analytics-network
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   postgres:
-    image: postgres:13-alpine
+    image: postgres:15-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_USER: admin
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: analytics
+      POSTGRES_DB: scenarios
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d scenarios"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - video-analytics-network
 
   orchestrator_service:
     image: misis-orchestrator_service
-    ports:
-      - "8001:8001"
+    restart: unless-stopped
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      DATABASE_URL: postgresql://postgres:postgres@postgres/analytics
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/docs"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
+      HEARTBEAT_TIMEOUT: 30
+      HEARTBEAT_CHECK_INTERVAL: 5
+      DB_HOST: postgres
+      DB_NAME: scenarios
+      DB_USER: admin
+      DB_PASSWORD: postgres
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
+    networks:
+      - video-analytics-network
 
   inference_service:
     image: misis-inference_service
     ports:
       - "8002:8002"
-    environment:
-      MODEL_NAME: yolov8n
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/docs"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-    depends_on:
-      kafka:
-        condition: service_healthy
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - video-analytics-network
 
   api_service:
     image: misis-api_service
     ports:
       - "8000:8000"
+    restart: unless-stopped
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      ORCHESTRATOR_URL: http://orchestrator_service:8001
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_VIDEOS_BUCKET: videos
+      S3_PREDICTIONS_BUCKET: predictions
+      DB_HOST: postgres
+      DB_NAME: scenarios
+      DB_USER: admin
+      DB_PASSWORD: postgres
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 30s
       timeout: 5s
-      retries: 3
+      retries: 5
     depends_on:
       kafka:
         condition: service_healthy
-      orchestrator_service:
+      minio:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+      orchestrator:
+        condition: service_healthy
+    networks:
+      - video-analytics-network
 
   runner_service:
     image: misis-runner_service
     environment:
+      RUNNER_ID: $runner_{HOSTNAME}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      INFERENCE_URL: http://inference_service:8002
-    healthcheck:
-      test: ["CMD", "exit", "0"]
-      interval: 30s
-      timeout: 5s
-      retries: 1
+      INFERENCE_SERVICE_URL: http://localhost:8002
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_VIDEOS_BUCKET: videos
+      S3_PREDICTIONS_BUCKET: predictions
+      DB_HOST: postgres
+      DB_NAME: scenarios
+      DB_USER: admin
+      DB_PASSWORD: postgres
+      HEARTBEAT_CHECK_INTERVAL: 5
+      MAX_CONCURRENT_SCENARIOS: 1
+    restart: unless-stopped
     depends_on:
-      inference_service:
-        condition: service_healthy
       kafka:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      inference_service:
+        condition: service_healthy
+    networks:
+      - video-analytics-network
 
 volumes:
   postgres_data:
+  minio_data:
 
 networks:
-  default:
+  video-analytics-network:
     driver: bridge
-    name: misis_network
