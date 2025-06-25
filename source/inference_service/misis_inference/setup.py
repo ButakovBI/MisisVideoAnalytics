@@ -8,6 +8,7 @@ REQUIRES = [
     "fastapi",
     "httpx",
     "pydantic",
+    "pydantic_settings",
     "python-multipart",
     "ultralytics",
     "uvicorn[standard]",

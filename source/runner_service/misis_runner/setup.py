@@ -8,6 +8,7 @@ REQUIRES = [
     'aiokafka',
     'aioboto3',
     'httpx',
+    "pydantic_settings",
     'opencv-python-headless',
 ]
 

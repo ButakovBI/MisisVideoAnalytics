@@ -8,6 +8,7 @@ AUTHOR = 'ButakovBI'
 REQUIRES = [
     "aiokafka",
     "pydantic",
+    "pydantic_settings",
     "sqlalchemy",
 ]
 

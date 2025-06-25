@@ -10,6 +10,7 @@ REQUIRES = [
     "fastapi",
     "httpx",
     "pydantic",
+    "pydantic_settings",
     "sqlalchemy",
     "uvicorn[standard]"
 ]
