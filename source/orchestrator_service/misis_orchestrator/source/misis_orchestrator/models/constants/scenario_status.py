@@ -1,7 +1,7 @@
-from enum import StrEnum
+from enum import Enum
 
 
-class ScenarioStatus(StrEnum):
+class ScenarioStatus(str, Enum):
     INIT_STARTUP = "init_startup"
     IN_STARTUP_PROCESSING = "in_startup_processing"
     ACTIVE = "active"

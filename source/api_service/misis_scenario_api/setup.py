@@ -12,6 +12,7 @@ REQUIRES = [
     "httpx",
     "pydantic",
     "pydantic_settings",
+    "python-multipart",
     "sqlalchemy",
     "uvicorn[standard]"
 ]

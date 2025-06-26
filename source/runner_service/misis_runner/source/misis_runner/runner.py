@@ -22,7 +22,7 @@ class Runner:
         self.inference_client = InferenceClient(
             base_url=settings.INFERENCE_SERVICE_URL
         )
-        self.processing_semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_PROCESSORS)
+        self.processing_semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_SCENARIOS)
 
     async def start(self):
         await self.heartbeat_sender.producer.start()

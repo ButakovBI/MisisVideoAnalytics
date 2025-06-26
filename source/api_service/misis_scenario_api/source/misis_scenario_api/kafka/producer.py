@@ -9,8 +9,7 @@ class Producer:
         self.producer = AIOKafkaProducer(
             bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
             value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-            acks='all',
-            retries=3
+            acks='all'
         )
 
     async def send(self, topic: str, value: dict):

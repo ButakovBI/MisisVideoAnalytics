@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     KAFKA_MAX_POLL_INTERVAL_MS: int = 300000
 
     HEARTBEAT_INTERVAL: int = 5  # seconds
-    INFERENCE_SERVICE_URL: str = "http://localhost:8002"
+    INFERENCE_SERVICE_URL: str = "http://localhost:8001"
     MAX_CONCURRENT_SCENARIOS: int = 1
     RUNNER_ID: str = os.getenv('HOSTNAME', 'runner_1')
 

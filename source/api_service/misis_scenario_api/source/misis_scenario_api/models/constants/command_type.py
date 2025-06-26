@@ -1,6 +1,6 @@
-from enum import StrEnum
+from enum import Enum
 
 
-class CommandType(StrEnum):
+class CommandType(str, Enum):
     START = "start"
     STOP = "stop"

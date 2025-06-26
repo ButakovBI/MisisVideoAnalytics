@@ -1,7 +1,7 @@
-from enum import StrEnum
+from enum import Enum
 
 
-class KafkaTopic(StrEnum):
+class KafkaTopic(str, Enum):
     HEARTBEATS = "heartbeats"
     SCENARIO_EVENTS = "scenario_events"
     RUNNER_COMMANDS = "runner_commands"

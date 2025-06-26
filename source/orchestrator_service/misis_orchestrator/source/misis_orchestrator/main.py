@@ -1,7 +1,8 @@
 import asyncio
 import logging
 
-from misis_orchestrator.database.database import get_db_session
+from misis_orchestrator.database.database import get_db_session, engine
+from misis_orchestrator.database.base import Base
 from misis_orchestrator.health.watchdog import Watchdog
 from misis_orchestrator.kafka.consumer import Consumer
 from misis_orchestrator.orchestrator_service import OrchestratorService
@@ -12,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     session_factory = get_db_session
     orchestrator = OrchestratorService(session_factory)
     consumers = Consumer()

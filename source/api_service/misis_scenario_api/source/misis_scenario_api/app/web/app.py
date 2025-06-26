@@ -2,6 +2,8 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from sqlalchemy import text
+
 from misis_scenario_api.app.web.routers import router
 from misis_scenario_api.database.database import engine
 from misis_scenario_api.kafka.producer import Producer
@@ -19,7 +21,7 @@ async def lifespan(app: FastAPI):
     worker_task = asyncio.create_task(app.state.outbox_worker.start())
 
     async with engine.begin() as conn:
-        await conn.run_sync(lambda sync_conn: sync_conn.execute("SELECT 1"))
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("SELECT 1")))
 
     yield
 

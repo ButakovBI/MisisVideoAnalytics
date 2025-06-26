@@ -1,4 +1,4 @@
-from misis_scenario_api.database.database import Base
+from misis_scenario_api.database.base import Base
 from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import UUID
 

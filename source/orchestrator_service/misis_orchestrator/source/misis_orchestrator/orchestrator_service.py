@@ -29,75 +29,88 @@ class OrchestratorService:
             await self._process_stop_command(command)
 
     async def _process_start_command(self, command: ScenarioCommand):
-        async with self.session_factory():
-            current_status = await self.scenario_manager.get_status(command.scenario_id)
-            if current_status not in [ScenarioStatus.INIT_STARTUP, ScenarioStatus.INACTIVE]:
-                logger.warning(f"Ignore start for {command.scenario_id}, status: {current_status}")
-                return
+        async for session in self.session_factory():
+            try:
+                async with session.begin():
+                    current_status = await self.scenario_manager.get_status(command.scenario_id, session=session)
+                    if current_status not in [ScenarioStatus.INIT_STARTUP, ScenarioStatus.INACTIVE]:
+                        logger.warning(f"Ignore start for {command.scenario_id}, status: {current_status}")
+                        return
 
-            await self.scenario_manager.update_status(
-                command.scenario_id,
-                ScenarioStatus.IN_STARTUP_PROCESSING
-            )
+                    await self.scenario_manager.update_status(
+                        command.scenario_id,
+                        ScenarioStatus.IN_STARTUP_PROCESSING,
+                        session=session
+                    )
 
-            await self.producer.send(
-                KafkaTopic.RUNNER_COMMANDS,
-                value={
-                    "type": "start",
-                    "scenario_id": str(command.scenario_id),
-                    "video_path": command.video_path
-                }
-            )
+                    await self.producer.send(
+                        KafkaTopic.RUNNER_COMMANDS.value,
+                        value={
+                            "type": "start",
+                            "scenario_id": str(command.scenario_id),
+                            "video_path": command.video_path
+                        }
+                    )
 
-            await self.scenario_manager.create_outbox_event(
-                scenario_id=command.scenario_id,
-                event_type=ScenarioStatus.IN_STARTUP_PROCESSING,
-                payload={"video_path": command.video_path}
-            )
+                    await self.scenario_manager.create_outbox_event(
+                        scenario_id=command.scenario_id,
+                        event_type=ScenarioStatus.IN_STARTUP_PROCESSING,
+                        payload={"video_path": command.video_path},
+                        session=session,
+                    )
 
-            await self.scenario_manager.create_heartbeat(
-                scenario_id=command.scenario_id
-            )
+                    await self.scenario_manager.create_heartbeat(
+                        scenario_id=command.scenario_id,
+                        session=session,
+                    )
+            except Exception as e:
+                logger.error(f"Error processing command: {e}")
+                raise
 
     async def _process_stop_command(self, command: ScenarioCommand):
-        async with self.session_factory():
-            await self.scenario_manager.update_status(
-                command.scenario_id,
-                ScenarioStatus.IN_SHUTDOWN_PROCESSING
-            )
+        async with self.session_factory() as session:
+            async with session.begin():
+                await self.scenario_manager.update_status(
+                    command.scenario_id,
+                    ScenarioStatus.IN_SHUTDOWN_PROCESSING,
+                    session=session
+                )
 
-            await self.producer.send(
-                KafkaTopic.RUNNER_COMMANDS,
-                value={
-                    "type": "stop",
-                    "scenario_id": str(command.scenario_id)
-                }
-            )
+                await self.producer.send(
+                    KafkaTopic.RUNNER_COMMANDS.value,
+                    value={
+                        "type": "stop",
+                        "scenario_id": str(command.scenario_id)
+                    }
+                )
 
-            await self.scenario_manager.create_outbox_event(
-                scenario_id=command.scenario_id,
-                event_type="status_update",
-                payload={"status": ScenarioStatus.IN_SHUTDOWN_PROCESSING}
-            )
+                await self.scenario_manager.create_outbox_event(
+                    scenario_id=command.scenario_id,
+                    event_type=ScenarioStatus.IN_SHUTDOWN_PROCESSING,
+                    payload={"status": ScenarioStatus.IN_SHUTDOWN_PROCESSING},
+                    session=session,
+                )
 
-            await self.scenario_manager.delete_heartbeat(
-                scenario_id=command.scenario_id
-            )
+                await self.scenario_manager.delete_heartbeat(
+                    scenario_id=command.scenario_id,
+                    session=session,
+                )
 
     async def restart_scenario(self, scenario_id: UUID):
-        async with self.session_factory():
+        async with self.session_factory() as session:
             try:
-                video_path = await self.scenario_manager.get_video_path(scenario_id)
+                video_path = await self.scenario_manager.get_video_path(scenario_id, session=session)
             except NoResultFound:
                 logger.error(f"Scenario {scenario_id} not found")
                 return
             await self.scenario_manager.update_status(
                 scenario_id=scenario_id,
                 status=ScenarioStatus.IN_STARTUP_PROCESSING,
+                session=session
             )
 
             await self.producer.send(
-                KafkaTopic.RUNNER_COMMANDS,
+                KafkaTopic.RUNNER_COMMANDS.value,
                 value={
                     "type": "start",
                     "scenario_id": str(scenario_id),
@@ -109,7 +122,8 @@ class OrchestratorService:
             await self.scenario_manager.create_outbox_event(
                 scenario_id=scenario_id,
                 event_type=ScenarioStatus.IN_STARTUP_PROCESSING,
-                payload={"video_path": video_path, "is_restart": True}
+                payload={"video_path": video_path, "is_restart": True},
+                session=session,
             )
 
     async def stop(self):

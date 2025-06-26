@@ -30,7 +30,7 @@ class Producer:
                 await self.start()
 
             await self.producer.send(
-                KafkaTopic.HEARTBEATS,
+                KafkaTopic.HEARTBEATS.value,
                 value={
                     "scenario_id": str(scenario_id),
                     "runner_id": settings.RUNNER_ID,

@@ -19,13 +19,13 @@ class Consumer:
     def __init__(self):
         self.running = True
         self.commands_consumer = AIOKafkaConsumer(
-            KafkaTopic.SCENARIO_EVENTS,
+            KafkaTopic.SCENARIO_EVENTS.value,
             bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
             group_id="orchestrator_group",
             value_deserializer=lambda v: json.loads(v.decode('utf-8')),
         )
         self.heartbeats_consumer = AIOKafkaConsumer(
-            KafkaTopic.HEARTBEATS,
+            KafkaTopic.HEARTBEATS.value,
             bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
             value_deserializer=lambda v: json.loads(v.decode())
         )

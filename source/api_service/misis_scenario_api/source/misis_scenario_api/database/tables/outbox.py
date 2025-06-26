@@ -1,6 +1,6 @@
 import datetime
 
-from misis_scenario_api.database.database import Base
+from misis_scenario_api.database.base import Base
 from sqlalchemy import JSON, Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -13,4 +13,4 @@ class Outbox(Base):
     event_type = Column(String(50), nullable=False)
     payload = Column(JSON, nullable=False)
     processed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.timezone.utc)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

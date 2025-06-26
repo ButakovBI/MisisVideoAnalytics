@@ -15,7 +15,7 @@ class Consumer:
     def __init__(self):
         self._running = False
         self.start_consumer = AIOKafkaConsumer(
-            KafkaTopic.RUNNER_COMMANDS,
+            KafkaTopic.RUNNER_COMMANDS.value,
             bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
             group_id="runners_group",
             enable_auto_commit=False,
@@ -23,7 +23,7 @@ class Consumer:
             session_timeout_ms=60000,
         )
         self.stop_consumer = AIOKafkaConsumer(
-            KafkaTopic.RUNNER_COMMANDS,
+            KafkaTopic.RUNNER_COMMANDS.value,
             bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
             auto_offset_reset='latest',
         )

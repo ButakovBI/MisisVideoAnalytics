@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import UUID
 
-from misis_orchestrator.database.database import Base
+from misis_orchestrator.database.base import Base
 
 
 class Scenario(Base):

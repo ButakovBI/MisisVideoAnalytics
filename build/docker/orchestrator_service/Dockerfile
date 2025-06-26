@@ -18,4 +18,4 @@ ENV PYTHONPATH=/app
 
 USER appuser
 
-CMD ["python", "-m", "misis_orchestrator.main.main"]
+CMD ["python", "-m", "misis_orchestrator.main"]

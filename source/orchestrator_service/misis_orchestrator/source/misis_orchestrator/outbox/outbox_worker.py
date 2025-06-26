@@ -38,7 +38,7 @@ class OutboxWorker:
     async def _process_outbox(self):
         while self.running:
             try:
-                async with self.session_factory() as session:
+                async for session in self.session_factory():
                     async with session.begin():
                         result = await session.execute(
                             select(Outbox)
@@ -53,7 +53,7 @@ class OutboxWorker:
                         for event in events:
                             try:
                                 await self.producer.send(
-                                    KafkaTopic.SCENARIO_EVENTS,
+                                    KafkaTopic.SCENARIO_EVENTS.value,
                                     value={
                                         "event_type": event.event_type,
                                         "scenario_id": str(event.scenario_id),

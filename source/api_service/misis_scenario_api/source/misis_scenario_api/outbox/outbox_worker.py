@@ -48,7 +48,7 @@ class OutboxWorker:
                 for event in events:
                     try:
                         await self.producer.send(
-                            KafkaTopic.SCENARIO_EVENTS,
+                            KafkaTopic.SCENARIO_EVENTS.value,
                             {
                                 "event_type": event.event_type,
                                 "scenario_id": str(event.scenario_id),
