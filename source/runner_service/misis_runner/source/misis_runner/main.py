@@ -1,13 +1,22 @@
 import asyncio
+import logging
 
 from misis_runner.runner import Runner
+
+logger = logging.getLogger(__name__)
 
 
 async def main():
     runner = Runner()
-    await runner.start()
-    while True:
-        await asyncio.sleep(1)
+    try:
+        await runner.start()
+        while True:
+            await asyncio.sleep(3600)
+    except KeyboardInterrupt:
+        logger.info("Received exit signal")
+    finally:
+        await runner.stop()
+        logger.info("Runner shutdown complete")
 
 
 if __name__ == "__main__":

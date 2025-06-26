@@ -1,4 +1,5 @@
 import os
+
 from pydantic_settings import BaseSettings
 
 
@@ -16,6 +17,8 @@ class Settings(BaseSettings):
     DB_USER: str
 
     KAFKA_BOOTSTRAP_SERVERS: str
+    KAFKA_CONSUMER_TIMEOUT_MS: int = 5000
+    KAFKA_MAX_POLL_INTERVAL_MS: int = 300000
 
     HEARTBEAT_INTERVAL: int = 5  # seconds
     INFERENCE_SERVICE_URL: str = "http://localhost:8002"

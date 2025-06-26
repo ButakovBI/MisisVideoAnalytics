@@ -2,7 +2,6 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-
 from misis_scenario_api.app.web.routers import router
 from misis_scenario_api.database.database import engine
 from misis_scenario_api.kafka.producer import Producer

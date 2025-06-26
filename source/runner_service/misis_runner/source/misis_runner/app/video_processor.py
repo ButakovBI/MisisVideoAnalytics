@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from uuid import UUID
@@ -25,61 +26,79 @@ class VideoProcessor:
         self.s3_video_key = s3_video_key
         self.s3_client = s3_client
         self.inference_client = inference_client
-        self._break_flag = False
+        self._stop_event = asyncio.Event()
+        self.is_stopping = False
         self.last_processed_frame = 0
         self.processed_frames = 0
         self.temp_video_path = None
+        self.current_frame_task = None
 
     async def process(self):
+        loop = asyncio.get_running_loop()
         cap = None
         try:
+            if self._stop_event.is_set():
+                return
             self.temp_video_path = await self.s3_client.download_video(self.s3_video_key)
+            if self._stop_event.is_set():
+                return
 
-            cap = cv2.VideoCapture(self.temp_video_path)
-            if not cap.isOpened():
+            cap = await loop.run_in_executor(None, cv2.VideoCapture, self.temp_video_path)
+            is_opened = await loop.run_in_executor(None, cap.isOpened)
+            if not is_opened:
                 raise ValueError(f"Failed to open video {self.temp_video_path}")
 
-            while not self._break_flag:
-                ret, frame = cap.read()
+            while not self._stop_event.is_set():
+                ret, frame = await loop.run_in_executor(None, cap.read)
                 self.last_processed_frame += 1
 
                 if not ret or (self.last_processed_frame % FRAME_SKIP != 0):
                     continue
                 try:
-                    processed_frame = self._preprocess(frame)
-                    predictions = await self._process_frame(processed_frame)
-                    await self._save_predicitons(predictions)
-                    self.processed_frames += 1
+                    self.current_frame_task = asyncio.create_task(
+                        self._process_frame(frame)
+                    )
+                    await self.current_frame_task
+                except asyncio.CancelledError:
+                    logger.debug(f"[Runner] Frame processing cancelled for {self.scenario_id}")
+                    break
                 except Exception as e:
-                    logger.error(f"[Runner] Frame processing failed {str(e)}")
+                    logger.error(f"[Runner] Frame processing error: {str(e)}")
         except Exception as e:
             logger.error(f"[Runner] Video processing failed: {str(e)}")
         finally:
             if cap:
-                cap.release()
+                await loop.run_in_executor(None, cap.release)
             if self.temp_video_path and os.path.exists(self.temp_video_path):
                 os.unlink(self.temp_video_path)
             logger.info(f"[Runner] Completed. Scenario {self.scenario_id}. Processed {self.processed_frames} frames")
 
     def stop(self):
-        self._break_flag = True
+        self.is_stopping = True
+        self._stop_event.set()
+        if self.current_frame_task:
+            self.current_frame_task.cancel()
 
     def _preprocess(self, frame):
         if frame is None:
             raise ValueError("Empty frame received")
         return cv2.resize(frame, SIZE) / 255.0
 
-    async def _process_frame(self, frame) -> list:
-        try:
-            _, img_bytes = cv2.imencode('.jpg', frame)
-            return await self.inference_client.predict_frame(
-                frame_bytes=img_bytes.tobytes(),
-                scenario_id=self.scenario_id,
-                frame_number=self.last_processed_frame
-            )
-        except Exception as e:
-            logger.error(f"[Runner] Video processor: frame processing failed: {str(e)}")
-            return []
+    async def _process_frame(self, frame):
+        if frame is None:
+            logger.warning("Empty frame skipped")
+            return
+
+        loop = asyncio.get_running_loop()
+        _, img_bytes = await loop.run_in_executor(None, cv2.imencode, '.jpg', frame)
+        processed_frame = img_bytes.tobytes()
+        predictions = await self.inference_client.predict_frame(
+            frame_bytes=processed_frame,
+            scenario_id=self.scenario_id,
+            frame_number=self.last_processed_frame
+        )
+        await self._save_predictions(predictions)
+        self.processed_frames += 1
 
     async def _save_predictions(self, predictions: list):
         if not predictions:

@@ -2,11 +2,12 @@ import setuptools
 from misis_bootstrap.package_manager import PackageManager
 
 PACKAGE_NAME = 'misis_orchestrator'
-VERSION = '2.0.0'
+VERSION = '2.0.1'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [
     "aiokafka",
+    "asyncpg",
     "pydantic",
     "pydantic_settings",
     "sqlalchemy",

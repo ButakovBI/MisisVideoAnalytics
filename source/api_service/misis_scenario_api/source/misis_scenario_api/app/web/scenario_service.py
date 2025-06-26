@@ -2,10 +2,6 @@ import logging
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import insert, select, update
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from misis_scenario_api.app.config import settings
 from misis_scenario_api.database.tables.outbox import Outbox
 from misis_scenario_api.database.tables.scenario import Scenario
@@ -17,6 +13,9 @@ from misis_scenario_api.models.prediction_response import PredictionResponse
 from misis_scenario_api.models.scenario_status_response import \
     ScenarioStatusResponse
 from misis_scenario_api.s3.s3_client import S3Client
+from sqlalchemy import insert, select, update
+from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

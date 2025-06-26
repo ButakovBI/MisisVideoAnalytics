@@ -11,7 +11,7 @@ COPY --chown=appuser:appgroup build/whl /whl
 COPY --chown=appuser:appgroup source/orchestrator_service/ /app
 
 ARG LIBS
-RUN pip install --no-cache-dir ${LIBS} --find-links /whl/ && \
+RUN pip install --no-cache-dir misis_orchestrator --find-links /whl/ && \
     rm -rf /root/.cache/pip
 
 ENV PYTHONPATH=/app

@@ -48,7 +48,7 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     volumes:
-      - minio_data:/data
+      - /tmp/minio_data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
@@ -57,7 +57,7 @@ services:
       start_period: 30s
 
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     restart: unless-stopped
     ports:
       - "5432:5432"
@@ -135,7 +135,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      orchestrator:
+      orchestrator_service:
         condition: service_healthy
     networks:
       - video-analytics-network
@@ -143,7 +143,7 @@ services:
   runner_service:
     image: misis-runner_service
     environment:
-      RUNNER_ID: $runner_{HOSTNAME}
+      RUNNER_ID: runner_${HOSTNAME}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       INFERENCE_SERVICE_URL: http://localhost:8002
       S3_ENDPOINT: http://minio:9000
@@ -172,7 +172,6 @@ services:
 
 volumes:
   postgres_data:
-  minio_data:
 
 networks:
   video-analytics-network:

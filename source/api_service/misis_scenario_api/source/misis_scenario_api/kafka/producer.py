@@ -1,7 +1,6 @@
 import json
 
 from aiokafka import AIOKafkaProducer
-
 from misis_scenario_api.app.config import settings
 
 

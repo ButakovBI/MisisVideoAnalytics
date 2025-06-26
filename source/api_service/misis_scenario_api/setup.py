@@ -1,12 +1,13 @@
 import setuptools
 
 PACKAGE_NAME = 'misis_scenario_api'
-VERSION = '2.2.0'
+VERSION = '2.2.1'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [
     "aioboto3",
     "aiokafka",
+    "asyncpg",
     "fastapi",
     "httpx",
     "pydantic",

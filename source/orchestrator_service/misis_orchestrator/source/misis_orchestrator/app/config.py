@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str
 
     HEARTBEAT_TIMEOUT: int = 30  # seconds
-    HEARTBEAT_CHECK_INTERVAL = 5  # seconds
+    HEARTBEAT_CHECK_INTERVAL: int = 5  # seconds
 
     class Config:
         env_file = ".env"

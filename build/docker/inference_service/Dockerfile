@@ -11,7 +11,8 @@ COPY --chown=appuser:appgroup build/whl /whl
 COPY --chown=appuser:appgroup source/inference_service/ /app
 
 ARG LIBS
-RUN pip install --no-cache-dir ${LIBS} --find-links /whl/ && \
+RUN pip install --no-cache-dir misis_inference --find-links /whl/ && \
+    apt-get update && apt-get install -y libgl1 libglib2.0-0 && \
     rm -rf /root/.cache/pip
 
 ENV PYTHONPATH=/app

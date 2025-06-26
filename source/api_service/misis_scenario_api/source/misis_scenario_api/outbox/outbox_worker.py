@@ -2,12 +2,12 @@ import asyncio
 import logging
 from datetime import datetime
 
-from sqlalchemy import select, update
-from sqlalchemy.exc import OperationalError
-
 from misis_scenario_api.database.database import get_db_session
 from misis_scenario_api.database.tables.outbox import Outbox
 from misis_scenario_api.kafka.producer import Producer
+from misis_scenario_api.models.constants.kafka_topic import KafkaTopic
+from sqlalchemy import select, update
+from sqlalchemy.exc import OperationalError
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +48,9 @@ class OutboxWorker:
                 for event in events:
                     try:
                         await self.producer.send(
-                            event.event_type,
+                            KafkaTopic.SCENARIO_EVENTS,
                             {
+                                "event_type": event.event_type,
                                 "scenario_id": str(event.scenario_id),
                                 "payload": event.payload,
                                 "event_id": str(event.id),

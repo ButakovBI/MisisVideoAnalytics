@@ -2,8 +2,6 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from misis_scenario_api.app.web.scenario_service import ScenarioService
 from misis_scenario_api.database.database import get_db_session
 from misis_scenario_api.kafka.producer import Producer
@@ -12,6 +10,7 @@ from misis_scenario_api.models.prediction_response import PredictionResponse
 from misis_scenario_api.models.scenario_status_response import \
     ScenarioStatusResponse
 from misis_scenario_api.s3.s3_client import S3Client
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 

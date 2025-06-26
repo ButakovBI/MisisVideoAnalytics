@@ -22,8 +22,10 @@ class Runner:
         self.inference_client = InferenceClient(
             base_url=settings.INFERENCE_SERVICE_URL
         )
+        self.processing_semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_PROCESSORS)
 
     async def start(self):
+        await self.heartbeat_sender.producer.start()
         await self.consumer.start(
             start_handler=self.handle_start,
             stop_handler=self.handle_stop
@@ -33,13 +35,14 @@ class Runner:
         )
 
     async def handle_start(self, scenario_id: UUID, s3_video_key: str):
+        if scenario_id in self.active_scenarios:
+            logger.warning(f"[Runner] Scenario already runnign {scenario_id}")
+            await self.handle_stop(scenario_id)
+            await asyncio.sleep(0.1)
+        if len(self.active_scenarios) >= settings.MAX_CONCURRENT_SCENARIOS:
+            logger.info(f"[Runner] Reached max scenarios limit, rejecting {scenario_id}")
+            return
         try:
-            if scenario_id in self.active_scenarios:
-                logger.warning(f"[Runner] Scenario already runnign {scenario_id}")
-            if len(self.active_scenarios) >= settings.MAX_CONCURRENT_SCENARIOS:
-                logger.info(f"[Runner] Reached max scenarios limit, rejecting {scenario_id}")
-                return
-
             logger.info(f"[Runner] Starting scenario {scenario_id}")
             processor = VideoProcessor(
                 scenario_id=scenario_id,
@@ -55,21 +58,28 @@ class Runner:
             self.active_scenarios.pop(scenario_id, None)
 
     async def handle_stop(self, scenario_id: UUID):
-        if scenario_id in self.active_scenarios:
-            self.active_scenarios[scenario_id].stop()
+        processor = self.active_scenarios.pop(scenario_id, None)
+        if processor:
+            processor.stop()
 
     async def stop(self):
         logger.info("[Runner] Stopping runner...")
+        await self.heartbeat_sender.stop()
+        await self.consumer.stop()
+        await self.inference_client.close()
         for processor in self.active_scenarios.values():
             processor.stop()
-        await self.consumer.stop()
-        await self.heartbeat_sender.stop()
+        self.active_scenarios.clear()
         logger.info("[Runner] Runner stopped")
 
     async def _run_processor(self, processor: VideoProcessor):
         start_time = time.time()
         try:
-            await processor.process()
+            async with self.processing_semaphore:
+                await processor.process()
             logger.info(f"Scenario {processor.scenario_id} completed in {time.time() - start_time}s")
+        except Exception as e:
+            logger.error(f"Scenario processing failed: {str(e)}")
         finally:
-            self.active_scenarios.pop(processor.scenario_id, None)
+            if processor.scenario_id in self.active_scenarios:
+                del self.active_scenarios[processor.scenario_id]

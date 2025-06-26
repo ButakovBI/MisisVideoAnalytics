@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from misis_orchestrator.database.database import async_session
+from misis_orchestrator.database.database import get_db_session
 from misis_orchestrator.health.watchdog import Watchdog
 from misis_orchestrator.kafka.consumer import Consumer
 from misis_orchestrator.orchestrator_service import OrchestratorService
@@ -12,45 +12,75 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
-    async with async_session() as session:
-        orchestrator = OrchestratorService(db_session=session)
-        consumers = Consumer()
-        watchdog = Watchdog(db_session=session)
-        outbox_worker = OutboxWorker(db_session=session)
+    session_factory = get_db_session
+    orchestrator = OrchestratorService(session_factory)
+    consumers = Consumer()
+    watchdog = Watchdog(session_factory, orchestrator)
+    outbox_worker = OutboxWorker(session_factory)
 
-        await orchestrator.start()
-        await consumers.start()
-        worker_task = asyncio.create_task(outbox_worker.start())
+    await orchestrator.start()
+    await consumers.start()
 
-        asyncio.create_task(process_heartbeats(consumers, watchdog))
-        asyncio.create_task(handle_timeouts(watchdog, orchestrator))
+    tasks = [
+        asyncio.create_task(outbox_worker.start()),
+        asyncio.create_task(process_heartbeats(consumers, watchdog)),
+        asyncio.create_task(handle_timeouts(watchdog, orchestrator)),
+        asyncio.create_task(process_commands(consumers, orchestrator))
+    ]
 
+    try:
+        await asyncio.gather(*tasks)
+    finally:
+        await shutdown(consumers, orchestrator, outbox_worker, watchdog)
+
+
+async def process_heartbeats(consumers: Consumer, watchdog: Watchdog):
+    try:
+        async for heartbeat in consumers.consume_heartbeats():
+            try:
+                await watchdog.update_heartbeat(heartbeat.scenario_id, heartbeat.last_frame)
+                logger.debug(f"Heartbeat received: {heartbeat.scenario_id}")
+            except Exception as e:
+                logger.error(f"Heartbeat update failed: {str(e)}")
+    except Exception as e:
+        logger.error(f"Heartbeat processing failed: {str(e)}")
+
+
+async def handle_timeouts(watchdog: Watchdog, orchestrator: OrchestratorService):
+    try:
+        async for scenario_id in watchdog.check_timeouts():
+            logger.warning(f"Heartbeat timeout for {scenario_id}, restarting")
+            try:
+                await orchestrator.restart_scenario(scenario_id)
+            except Exception as e:
+                logger.error(f"Failed to restart scenario: {str(e)}")
+    except Exception as e:
+        logger.error(f"Timeout handler failed: {str(e)}")
+
+
+async def process_commands(consumers: Consumer, orchestrator: OrchestratorService):
+    try:
         async for command in consumers.consume_commands():
             try:
                 await orchestrator.process_command(command)
             except Exception as e:
-                logger.error(f"[Orchestrator] Command processing failed: {str(e)}")
-
-        await consumers.stop()
-        await orchestrator.stop()
-        outbox_worker.stop()
-        await worker_task
+                logger.error(f"Command processing failed: {str(e)}")
+    except Exception as e:
+        logger.error(f"Command processing failed: {str(e)}")
 
 
-async def process_heartbeats(consumers: Consumer, watchdog: Watchdog):
-    async for heartbeat in consumers.consume_heartbeats():
-        await watchdog.update_heartbeat(heartbeat.scenario_id)
-        logger.debug(f"[Orchestrator] Heartbeat received: {heartbeat}")
+async def shutdown(consumers, orchestrator, outbox_worker, watchdog):
+    watchdog.running = False
+    consumers.running = False
+    outbox_worker.running = False
 
+    await consumers.stop()
+    await orchestrator.stop()
+    await outbox_worker.stop()
 
-async def handle_timeouts(watchdog, orchestrator):
-    async for scenario_id in watchdog.check_timeouts():
-        logger.warning(f"[Orchestrator] Heartbeat timeout for scenario {scenario_id}, restarting")
-        try:
-            await orchestrator.restart_scenario(scenario_id)
-        except Exception as e:
-            logger.error(f"[Orchestrator] Failed to restart scenario {scenario_id}: {str(e)}")
+    logger.info("Orchestrator shutdown complete")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())

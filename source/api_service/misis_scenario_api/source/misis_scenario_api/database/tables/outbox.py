@@ -1,9 +1,8 @@
 import datetime
 
+from misis_scenario_api.database.database import Base
 from sqlalchemy import JSON, Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
-
-from misis_scenario_api.database.database import Base
 
 
 class Outbox(Base):

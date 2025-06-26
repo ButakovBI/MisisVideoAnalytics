@@ -1,44 +1,73 @@
+import logging
 from uuid import UUID
 
-from sqlalchemy import insert, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, func, insert, select, update
 
+from misis_orchestrator.database.tables.heartbeat import HeartbeatModel
 from misis_orchestrator.database.tables.outbox import Outbox
 from misis_orchestrator.database.tables.scenario import Scenario
 from misis_orchestrator.models.constants.scenario_status import ScenarioStatus
 
+logger = logging.getLogger(__name__)
+
 
 class ScenarioDBManager:
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    def __init__(self, session_factory):
+        self.session_factory = session_factory
 
     async def create_outbox_event(self, scenario_id: UUID, event_type: str, payload: dict):
-        await self.session.execute(
-            insert(Outbox).values(
-                scenario_id=scenario_id,
-                event_type=event_type,
-                payload=payload,
-                processed=False,
-            )
-        )
+        async with self.session_factory() as session:
+            async with session.begin():
+                await session.execute(
+                    insert(Outbox).values(
+                        scenario_id=scenario_id,
+                        event_type=event_type,
+                        payload=payload,
+                        processed=False,
+                    )
+                )
 
     async def get_video_path(self, scenario_id: UUID) -> str:
-        res = await self.session.execute(
-            select(Scenario.video_path)
-            .where(Scenario.id == scenario_id)
-        )
-        return res.scalar_one()
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Scenario.video_path)
+                .where(Scenario.id == scenario_id)
+            )
+            return result.scalar_one()
 
-    async def mark_outbox_processed(self, outbox_id: UUID):
-        await self.session.execute(
-            update(Outbox)
-            .where(Outbox.id == outbox_id)
-            .values(processed=True)
-        )
+    async def get_status(self, scenario_id: UUID) -> str:
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Scenario.status)
+                .where(Scenario.id == scenario_id)
+            )
+            return result.scalar_one()
 
     async def update_status(self, scenario_id: UUID, status: ScenarioStatus):
-        await self.session.execute(
-            update(Scenario)
-            .where(Scenario.id == scenario_id)
-            .values(status=status)
-        )
+        async with self.session_factory() as session:
+            async with session.begin():
+                await session.execute(
+                    update(Scenario)
+                    .where(Scenario.id == scenario_id)
+                    .values(status=status)
+                )
+
+    async def create_heartbeat(self, scenario_id: UUID):
+        async with self.session_factory() as session:
+            async with session.begin():
+                await session.execute(
+                    insert(HeartbeatModel)
+                    .values(scenario_id=scenario_id, last_timestamp=func.now())
+                    .on_conflict_do_update(
+                        index_elements=['scenario_id'],
+                        set_={'last_timestamp': func.now()}
+                    )
+                )
+
+    async def delete_heartbeat(self, scenario_id: UUID):
+        async with self.session_factory() as session:
+            async with session.begin():
+                await session.execute(
+                    delete(HeartbeatModel)
+                    .where(HeartbeatModel.scenario_id == scenario_id)
+                )

@@ -3,7 +3,6 @@ import logging
 from uuid import UUID
 
 import aioboto3
-
 from misis_scenario_api.app.config import settings
 
 logger = logging.getLogger(__name__)
