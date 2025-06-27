@@ -26,7 +26,9 @@ class Consumer:
         self.stop_consumer = AIOKafkaConsumer(
             KafkaTopic.RUNNER_COMMANDS.value,
             bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+            group_id=None,
             auto_offset_reset='latest',
+            consumer_timeout_ms=10000
         )
 
     async def start(self, start_handler, stop_handler):
@@ -45,7 +47,7 @@ class Consumer:
                         break
 
                     data = json.loads(msg.value)
-                    logger.info(f"mdg data: {data}")
+                    logger.info(f"[Runner] Consumer mdg data: {data}")
                     if data.get("type") == "start":
                         required_fields = ["scenario_id", "video_path"]
                         if all(field in data for field in required_fields):
@@ -68,11 +70,13 @@ class Consumer:
     async def _consume_stops(self, handler):
         while self._running:
             try:
-                msg = await self.stop_consumer.getone()
-                data = json.loads(msg.value)
-                if data.get("type") == "stop":
-                    logger.info("[Runner] Consumer process stop msg...")
-                    await handler(UUID(data["scenario_id"]))
+                async for msg in self.stop_consumer:
+                    if not self._running:
+                        break
+                    data = json.loads(msg.value)
+                    if data.get("type") == "stop":
+                        logger.info("[Runner] Consumer process stop msg...")
+                        await handler(UUID(data["scenario_id"]))
             except Exception as e:
                 logger.error(f"[Runner] Stop command processing failed: {str(e)}")
                 await asyncio.sleep(1)

@@ -30,7 +30,7 @@ class OutboxWorker:
                 await self._process_outbox()
                 await asyncio.sleep(1)
             except Exception as e:
-                logger.error(f"[Orchestrator Outbox] Outbox worker error: {str(e)}")
+                logger.error(f"[Orch Outbox] Outbox worker error: {str(e)}")
                 await asyncio.sleep(5)
 
     async def stop(self):
@@ -53,12 +53,14 @@ class OutboxWorker:
 
                         processed_events = []
                         for event in events:
+                            logger.info(f"[Orch Outbox] Start processing event: {event}")
                             payload = event.payload or {}
                             try:
                                 command_type = None
-                                if event.event_type == ScenarioStatus.INIT_STARTUP.value:
+                                logger.info(f"[Orch Outbox] Event type: {event.event_type}")
+                                if event.event_type in [ScenarioStatus.INIT_STARTUP.value, ScenarioStatus.IN_STARTUP_PROCESSING.value]:
                                     command_type = "start"
-                                elif event.event_type == ScenarioStatus.INIT_SHUTDOWN.value:
+                                elif event.event_type in [ScenarioStatus.INIT_SHUTDOWN.value, ScenarioStatus.IN_SHUTDOWN_PROCESSING.value]:
                                     command_type = "stop"
                                 message = {
                                     "type": command_type,
@@ -66,13 +68,15 @@ class OutboxWorker:
                                     "video_path": payload.get("video_path"),
                                 }
                                 if command_type == "start":
-                                    message["resume_from_frame"] = payload.get("resume_from_frame", 0)
+                                    last_frame = payload.get("resume_from_frame", 0)
+                                    message["resume_from_frame"] = last_frame
+                                    logger.info(f"[Orch Outbox] Runner will start from frame '{last_frame}'")
                                 await self.producer.send(
                                     KafkaTopic.RUNNER_COMMANDS.value,
                                     value=message
                                 )
                                 processed_events.append(event.id)
-                                logger.info("[Orch Outbox] Get event")
+                                logger.info("[Orch Outbox] Processed event successfully")
                             except Exception as e:
                                 logger.error(f"[Orch Outbox] Failed to send outbox event {event.id}: {str(e)}")
 

@@ -11,10 +11,11 @@ export REPO_ROOT=$(pwd)
 # pip3 install --default-timeout=3000 --retries=10 "$REPO_ROOT/build/misis_bootstrap"
 
 echo "Building packages..."
-misis-bootstrap --packages misis_orchestrator
-docker build -f build/docker/orchestrator_service/Dockerfile -t misis-orchestrator_service .
+misis-bootstrap --packages misis_scenario_api misis_orchestrator misis_runner
+misis-bootstrap --packages misis_runner
+# docker build -f build/docker/orchestrator_service/Dockerfile -t misis-orchestrator_service .
 # docker build -f build/docker/api_service/Dockerfile -t misis-api_service .
-# docker build -f build/docker/runner_service/Dockerfile -t misis-runner_service .
+docker build -f build/docker/runner_service/Dockerfile -t misis-runner_service .
 
 # echo "Verifying wheels..."
 # if [ -z "$(ls -A "$REPO_ROOT/build/whl")" ]; then

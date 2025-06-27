@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
-class Heartbeat(BaseModel):
+class HeartbeatModel(BaseModel):
     scenario_id: UUID
     runner_id: str
     last_frame: int

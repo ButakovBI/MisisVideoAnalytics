@@ -37,6 +37,9 @@ class VideoProcessor:
         self.current_frame_task = None
 
     async def process(self):
+        if self.last_processed_frame == -1:
+            logger.info("[Runner] This scenario already completed, check predictions")
+            return
         loop = asyncio.get_running_loop()
         cap = None
         try:
@@ -66,7 +69,11 @@ class VideoProcessor:
                 ret, frame = await loop.run_in_executor(None, cap.read)
                 self.last_processed_frame += 1
 
-                if not ret or (self.last_processed_frame % FRAME_SKIP != 0):
+                if not ret:
+                    logger.info(f"[Runner] Reached end of video at frame {self.last_processed_frame}")
+                    break
+
+                if self.last_processed_frame % FRAME_SKIP != 0:
                     continue
                 try:
                     self.current_frame_task = asyncio.create_task(
@@ -85,10 +92,13 @@ class VideoProcessor:
                 await loop.run_in_executor(None, cap.release)
             if self.temp_video_path and os.path.exists(self.temp_video_path):
                 os.unlink(self.temp_video_path)
+            self.last_processed_frame = -1
+            self.is_stopping = True
             logger.info(f"[Runner] Completed. Scenario {self.scenario_id}. Processed {self.processed_frames} frames")
 
     def stop(self):
         self.is_stopping = True
+        self.last_processed_frame = -1
         self._stop_event.set()
         if self.current_frame_task:
             self.current_frame_task.cancel()
@@ -108,11 +118,11 @@ class VideoProcessor:
         processed_frame = img_bytes.tobytes()
         predictions = await self.inference_client.predict_frame(
             frame_bytes=processed_frame,
-            scenario_id=self.scenario_id,
-            frame_number=self.last_processed_frame
+            scenario_id=self.scenario_id
         )
         await self._save_predictions(predictions)
         self.processed_frames += 1
+        await asyncio.sleep(5)
 
     async def _save_predictions(self, predictions: list[BoundingBox]):
         if not predictions:

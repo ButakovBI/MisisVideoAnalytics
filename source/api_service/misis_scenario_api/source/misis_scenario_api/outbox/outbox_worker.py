@@ -53,30 +53,28 @@ class OutboxWorker:
                     for event in events:
                         logger.info("[API Outbox] Start process events")
                         try:
-                            await self.producer.send(
-                                KafkaTopic.SCENARIO_EVENTS.value,
-                                {
-                                    "event_type": event.event_type,
-                                    "scenario_id": str(event.scenario_id),
-                                    "payload": event.payload,
-                                    "event_id": str(event.id),
-                                    "timestamp": datetime.utcnow().isoformat()
-                                }
-                            )
+                            async with session.begin_nested():
+                                await self.producer.send(
+                                    KafkaTopic.SCENARIO_EVENTS.value,
+                                    {
+                                        "event_type": event.event_type,
+                                        "scenario_id": str(event.scenario_id),
+                                        "payload": event.payload,
+                                        "event_id": str(event.id),
+                                        "timestamp": datetime.utcnow().isoformat()
+                                    }
+                                )
 
-                            await session.execute(
-                                update(Outbox)
-                                .where(Outbox.id == event.id)
-                                .values(processed=True)
-                            )
-                            await session.commit()
+                                await session.execute(
+                                    update(Outbox)
+                                    .where(Outbox.id == event.id)
+                                    .values(processed=True)
+                                )
                             logger.info(f"[API Outbox] Processed outbox event {event.id}")
 
                         except Exception as e:
                             logger.error(f"[API Outbox] Failed to process outbox event {event.id}: {str(e)}")
-                            await session.rollback()
-                            continue
-
+                    await session.commit()
                 except OperationalError as e:
                     logger.warning(f"[API Outbox] Database operation failed: {str(e)}")
                     await session.rollback()

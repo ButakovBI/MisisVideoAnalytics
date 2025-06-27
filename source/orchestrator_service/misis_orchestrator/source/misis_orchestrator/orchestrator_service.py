@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import select, update
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,7 +32,8 @@ class OrchestratorService:
             try:
                 async with session.begin():
                     current_status = await self.scenario_manager.get_status(command.scenario_id, session=session)
-                    if current_status not in [ScenarioStatus.INIT_STARTUP.value, ScenarioStatus.INACTIVE.value]:
+                    if current_status not in [ScenarioStatus.INIT_STARTUP.value,
+                                              ScenarioStatus.INACTIVE.value]:
                         logger.info(f"[Orch] Ignore start for {command.scenario_id}, status: {current_status}")
                         return
 
@@ -41,17 +42,22 @@ class OrchestratorService:
                         ScenarioStatus.IN_STARTUP_PROCESSING,
                         session=session
                     )
+                    logger.info(f"[Orchestrator] Change status to {ScenarioStatus.IN_STARTUP_PROCESSING}")
 
                     await self.scenario_manager.create_outbox_event(
                         scenario_id=command.scenario_id,
                         event_type=ScenarioStatus.IN_STARTUP_PROCESSING.value,
-                        payload={"video_path": command.video_path},
+                        payload={
+                            "video_path": command.video_path,
+                            "resume_from_frame": command.resume_from_frame
+                        },
                         session=session,
                     )
+                    logger.info(f"[Orchestrator] Create outbox event with resume_from_frame=={command.resume_from_frame}")
 
-                    await self.scenario_manager.create_heartbeat(
+                    await self.scenario_manager.upsert_heartbeat(
                         scenario_id=command.scenario_id,
-                        last_frame=0,
+                        last_frame=command.resume_from_frame,
                         session=session,
                     )
                     logger.info("[Orchestrator] Command start success")
@@ -63,6 +69,12 @@ class OrchestratorService:
         async for session in self.session_factory():
             try:
                 async with session.begin():
+                    last_frame = await session.execute(
+                        select(Heartbeat.last_frame)
+                        .where(Heartbeat.scenario_id == command.scenario_id)
+                    )
+                    last_frame = last_frame.scalar_one_or_none() or 0
+
                     current_status = await self.scenario_manager.get_status(command.scenario_id, session=session)
                     if current_status in [ScenarioStatus.IN_SHUTDOWN_PROCESSING.value, ScenarioStatus.INACTIVE.value]:
                         logger.warning(f"Ignore stop for {command.scenario_id}, status: {current_status}")
@@ -72,19 +84,17 @@ class OrchestratorService:
                         ScenarioStatus.IN_SHUTDOWN_PROCESSING,
                         session=session
                     )
+                    logger.info(f"[Orchestrator] Status changed to '{ScenarioStatus.IN_SHUTDOWN_PROCESSING}'")
 
                     await self.scenario_manager.create_outbox_event(
                         scenario_id=command.scenario_id,
                         event_type=ScenarioStatus.IN_SHUTDOWN_PROCESSING.value,
-                        payload={"status": ScenarioStatus.IN_SHUTDOWN_PROCESSING.value},
+                        payload={
+                            "status": ScenarioStatus.IN_SHUTDOWN_PROCESSING.value
+                        },
                         session=session,
                     )
-
-                    await self.scenario_manager.delete_heartbeat(
-                        scenario_id=command.scenario_id,
-                        session=session,
-                    )
-
+                    logger.info(f"[Orchestrator] Outbox event created for status '{ScenarioStatus.IN_SHUTDOWN_PROCESSING}'")
                     logger.info("[Orchestrator] Command stop success")
             except Exception as e:
                 logger.error(f"[Orchestrator] Error stop command: {e}")
@@ -127,7 +137,7 @@ class OrchestratorService:
                 session=session,
             )
 
-            await self.scenario_manager.create_heartbeat(
+            await self.scenario_manager.upsert_heartbeat(
                 scenario_id=scenario_id,
                 last_frame=last_frame,
                 session=session,
@@ -140,34 +150,47 @@ class OrchestratorService:
     async def update_heartbeat(self, scenario_id: UUID, runner_id: str, last_frame: int):
         try:
             async for session in self.session_factory():
-                scenario_status = await session.execute(
-                    select(Scenario.status)
-                    .where(Scenario.id == scenario_id)
-                )
+                async with session.begin():
+                    if last_frame == -1:
+                        logger.info(f"[Orchestrator] Final heartbeat received for {scenario_id}")
+                        await self.scenario_manager.update_status(
+                            scenario_id,
+                            ScenarioStatus.INACTIVE,
+                            session=session
+                        )
+                        await self.scenario_manager.upsert_heartbeat(
+                            scenario_id=scenario_id,
+                            last_frame=last_frame,
+                            session=session,
+                            runner_id=runner_id,
+                            is_active=False
+                        )
+                        return
 
-                if scenario_status.scalar_one_or_none() != ScenarioStatus.ACTIVE.value:
-                    logger.warning(f"Heartbeat rejected for stopped scenario: {scenario_id}")
-                    return
-                await session.execute(
-                    insert(Heartbeat)
-                    .values(
+                    query = await session.execute(
+                        select(Scenario.status)
+                        .where(Scenario.id == scenario_id)
+                    )
+                    current_status = query.scalar_one_or_none()
+
+                    if current_status == ScenarioStatus.IN_STARTUP_PROCESSING.value:
+                        await self.scenario_manager.update_status(
+                            scenario_id,
+                            ScenarioStatus.ACTIVE,
+                            session=session
+                        )
+                        logger.info(f"[Orchestrator] Status updated to {ScenarioStatus.ACTIVE.value}")
+
+                    elif current_status != ScenarioStatus.ACTIVE.value:
+                        logger.warning(f"[Orchestrator] Heartbeat rejected for scenario in status {current_status}")
+                        return
+                    await self.scenario_manager.upsert_heartbeat(
                         scenario_id=scenario_id,
-                        runner_id=runner_id,
-                        last_timestamp=func.now(),
                         last_frame=last_frame,
-                        is_active=True
+                        session=session,
+                        runner_id=runner_id
                     )
-                    .on_conflict_do_update(
-                        index_elements=['scenario_id'],
-                        set_={
-                            'runner_id': runner_id,
-                            'last_timestamp': func.now(),
-                            'last_frame': last_frame,
-                            'is_active': True
-                        }
-                    )
-                )
-                logger.info("[Orchestrator] Update heartbeat success")
+                    logger.info("[Orchestrator] Update heartbeat success")
         except Exception as e:
             logger.error(f"[Watchdog] Update heartbeat error: {str(e)}")
 

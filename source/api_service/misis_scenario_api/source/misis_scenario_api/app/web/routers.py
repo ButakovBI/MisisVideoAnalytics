@@ -55,7 +55,7 @@ async def update_scenario(
 ):
     try:
         service = ScenarioService(db=db, producer=producer, s3_client=None)
-        return await service.update_scenario(scenario_id=scenario_id, command=command)
+        return await service.update_scenario(scenario_id=scenario_id, command=command.value)
     except Exception as e:
         logger.error(f"[API] Updating scenario failed: {str(e)}")
         raise HTTPException(

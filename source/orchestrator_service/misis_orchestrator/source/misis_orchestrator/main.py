@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from uuid import UUID
 
 from misis_orchestrator.database.database import get_db_session, engine
 from misis_orchestrator.database.base import Base
@@ -28,7 +27,7 @@ async def main():
 
     session_factory = get_db_session
     orchestrator = OrchestratorService(session_factory)
-    consumers = Consumer()
+    consumers = Consumer(session_factory)
     watchdog = Watchdog(session_factory, orchestrator)
     outbox_worker = OutboxWorker(session_factory)
 
@@ -36,7 +35,7 @@ async def main():
 
     tasks = [
         run_task_with_restart(outbox_worker.start),
-        run_task_with_restart(process_heartbeats, consumers, watchdog),
+        run_task_with_restart(process_heartbeats, consumers, orchestrator),
         run_task_with_restart(watchdog.check_timeouts),
         run_task_with_restart(process_commands, consumers, orchestrator)
     ]
@@ -53,10 +52,9 @@ async def process_heartbeats(consumers: Consumer, orchestrator: OrchestratorServ
         async for heartbeat in consumers.consume_heartbeats():
             try:
                 await orchestrator.update_heartbeat(
-                    scenario_id=UUID(heartbeat["scenario_id"]),
-                    runner_id=heartbeat["runner_id"],
-                    last_frame=heartbeat["last_frame"],
-                    timestamp=heartbeat["timestamp"]
+                    scenario_id=heartbeat.scenario_id,
+                    runner_id=heartbeat.runner_id,
+                    last_frame=heartbeat.last_frame
                 )
                 logger.debug(f"[Orchestrator] Heartbeat received: {heartbeat.scenario_id}")
             except Exception as e:
@@ -69,6 +67,7 @@ async def process_commands(consumers: Consumer, orchestrator: OrchestratorServic
     try:
         async for command in consumers.consume_commands():
             try:
+                logger.info(f"[Orchestrator] Orchestrator in process command '{command.type}'...")
                 await orchestrator.process_command(command)
             except Exception as e:
                 logger.error(f"[Orchestrator] Command processing failed: {str(e)}")

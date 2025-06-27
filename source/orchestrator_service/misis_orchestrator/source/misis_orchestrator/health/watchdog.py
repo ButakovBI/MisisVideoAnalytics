@@ -64,6 +64,7 @@ class Watchdog:
 
             logger.info(f"[Watchdog] Heartbeat timeout for {scenario_id}, restarting...")
             await self.orchestrator.restart_scenario(scenario_id, session)
+            logger.info(f"[Watchdog] Scenario {scenario_id} restarted")
 
         except Exception as e:
             logger.error(f"[Watchdog] Failed to restart scenario {scenario_id}: {str(e)}")

@@ -55,7 +55,10 @@ class ScenarioService:
                     id=uuid4(),
                     scenario_id=scenario_id,
                     event_type=ScenarioStatus.INIT_STARTUP.value,
-                    payload={"video_path": s3_video_path}
+                    payload={
+                        "video_path": s3_video_path,
+                        "resume_from_frame": 0,
+                    }
                 )
             )
 
@@ -67,8 +70,8 @@ class ScenarioService:
             status=ScenarioStatus.INIT_STARTUP.value
         )
 
-    async def update_scenario(self, scenario_id: UUID, command: CommandType) -> ScenarioStatusResponse:
-        logger.info(f"[API Update] Update scenario {scenario_id} with command {command.value}")
+    async def update_scenario(self, scenario_id: UUID, command: str) -> ScenarioStatusResponse:
+        logger.info(f"[API Update] Update scenario {scenario_id} with command {command}")
 
         try:
             async with self.db.begin() as transaction:
@@ -86,7 +89,7 @@ class ScenarioService:
                 event_type = None
                 payload = {}
 
-                if command == CommandType.START:
+                if command == CommandType.START.value:
                     if current_status in [
                         ScenarioStatus.INIT_STARTUP.value,
                         ScenarioStatus.IN_STARTUP_PROCESSING.value,
@@ -107,7 +110,7 @@ class ScenarioService:
                         event_type = ScenarioStatus.INIT_STARTUP.value
                         payload = {"video_path": scenario.video_path}
 
-                elif command == CommandType.STOP:
+                elif command == CommandType.STOP.value:
                     if current_status in [
                         ScenarioStatus.INIT_SHUTDOWN.value,
                         ScenarioStatus.IN_SHUTDOWN_PROCESSING.value,

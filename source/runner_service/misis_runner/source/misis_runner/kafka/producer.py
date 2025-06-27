@@ -40,7 +40,7 @@ class Producer:
                     "scenario_id": str(scenario_id),
                     "runner_id": self._runner_id,
                     "last_frame": last_frame,
-                    "timestamp": datetime.now(datetime.timezone.utc).isoformat()
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
                 }
             )
             logger.info("[Runner] Producer sent heartbeat")

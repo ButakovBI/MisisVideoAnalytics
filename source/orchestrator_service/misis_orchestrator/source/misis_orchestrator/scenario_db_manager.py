@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy import func, insert, select, update
 
 from misis_orchestrator.database.tables.heartbeat import Heartbeat
 from misis_orchestrator.database.tables.outbox import Outbox
@@ -47,21 +47,24 @@ class ScenarioDBManager:
             .values(status=status)
         )
 
-    async def create_heartbeat(self, scenario_id: UUID, last_frame: int, session):
+    async def upsert_heartbeat(self, scenario_id: UUID, last_frame: int, session, runner_id: str | None = None, is_active: bool | None = True):
+        values = {
+            "last_timestamp": func.now(),
+            "last_frame": last_frame,
+            "is_active": is_active
+        }
+
+        if runner_id is not None:
+            values["runner_id"] = runner_id
+
         result = await session.execute(
             update(Heartbeat)
             .where(Heartbeat.scenario_id == scenario_id)
-            .values(last_timestamp=func.now(), last_frame=last_frame, is_active=True)
+            .values(**values)
         )
 
         if result.rowcount == 0:
             await session.execute(
                 insert(Heartbeat)
-                .values(scenario_id=scenario_id, last_timestamp=func.now(), last_frame=last_frame)
+                .values(scenario_id=scenario_id, **values)
             )
-
-    async def delete_heartbeat(self, scenario_id: UUID, session):
-        await session.execute(
-            delete(Heartbeat)
-            .where(Heartbeat.scenario_id == scenario_id)
-        )

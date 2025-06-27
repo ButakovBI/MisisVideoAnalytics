@@ -24,21 +24,10 @@ class Runner:
             base_url=settings.INFERENCE_SERVICE_URL
         )
 
-    async def start(self):
-        await self.heartbeat_sender.producer.start()
-        await self.consumer.start(
-            start_handler=self.handle_start,
-            stop_handler=self.handle_stop
-        )
-        await self.heartbeat_sender.start(
-            get_active_scenarios=lambda: self.active_scenarios
-        )
-
     async def handle_start(self, scenario_id: UUID, s3_video_key: str, resume_from_frame: int = 0):
         if scenario_id in self.active_scenarios:
             logger.info(f"[Runner] Scenario already runnign {scenario_id}")
-            await self.handle_stop(scenario_id)
-            await asyncio.sleep(0.1)
+            return
         try:
             logger.info(f"[Runner] Starting scenario {scenario_id}")
             processor = VideoProcessor(
@@ -62,6 +51,16 @@ class Runner:
         if processor:
             processor.stop()
 
+    async def start(self):
+        await self.heartbeat_sender.producer.start()
+        await self.consumer.start(
+            start_handler=self.handle_start,
+            stop_handler=self.handle_stop
+        )
+        await self.heartbeat_sender.start(
+            get_active_scenarios=lambda: self.active_scenarios
+        )
+
     async def stop(self):
         logger.info("[Runner] Stopping runner...")
         await self.heartbeat_sender.stop()
@@ -82,3 +81,10 @@ class Runner:
         finally:
             if processor.scenario_id in self.active_scenarios:
                 del self.active_scenarios[processor.scenario_id]
+            try:
+                await self.heartbeat_sender.producer.send_heartbeat(
+                    processor.scenario_id,
+                    processor.last_processed_frame,
+                )
+            except Exception as e:
+                logger.error(f"[Runner] Failed to send final heartbeat for {processor.scenario_id}: {str(e)}")
