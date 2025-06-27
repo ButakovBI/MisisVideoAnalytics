@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from uuid import UUID
 
 from misis_orchestrator.database.database import get_db_session, engine
 from misis_orchestrator.database.base import Base
@@ -12,6 +13,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+async def run_task_with_restart(task_func, *args):
+    while True:
+        try:
+            await task_func(*args)
+        except Exception as e:
+            logger.error(f"Task failed: {e}, restarting in 5 sec")
+            await asyncio.sleep(5)
+
+
 async def main():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -22,44 +32,37 @@ async def main():
     watchdog = Watchdog(session_factory, orchestrator)
     outbox_worker = OutboxWorker(session_factory)
 
-    await orchestrator.start()
     await consumers.start()
 
     tasks = [
-        asyncio.create_task(outbox_worker.start()),
-        asyncio.create_task(process_heartbeats(consumers, watchdog)),
-        asyncio.create_task(handle_timeouts(watchdog, orchestrator)),
-        asyncio.create_task(process_commands(consumers, orchestrator))
+        run_task_with_restart(outbox_worker.start),
+        run_task_with_restart(process_heartbeats, consumers, watchdog),
+        run_task_with_restart(watchdog.check_timeouts),
+        run_task_with_restart(process_commands, consumers, orchestrator)
     ]
 
     try:
+        logger.info("[Orchestrator] Starting orchestrator tasks...")
         await asyncio.gather(*tasks)
     finally:
         await shutdown(consumers, orchestrator, outbox_worker, watchdog)
 
 
-async def process_heartbeats(consumers: Consumer, watchdog: Watchdog):
+async def process_heartbeats(consumers: Consumer, orchestrator: OrchestratorService):
     try:
         async for heartbeat in consumers.consume_heartbeats():
             try:
-                await watchdog.update_heartbeat(heartbeat.scenario_id, heartbeat.last_frame)
-                logger.debug(f"Heartbeat received: {heartbeat.scenario_id}")
+                await orchestrator.update_heartbeat(
+                    scenario_id=UUID(heartbeat["scenario_id"]),
+                    runner_id=heartbeat["runner_id"],
+                    last_frame=heartbeat["last_frame"],
+                    timestamp=heartbeat["timestamp"]
+                )
+                logger.debug(f"[Orchestrator] Heartbeat received: {heartbeat.scenario_id}")
             except Exception as e:
-                logger.error(f"Heartbeat update failed: {str(e)}")
+                logger.error(f"[Orchestrator] Heartbeat update failed: {str(e)}")
     except Exception as e:
-        logger.error(f"Heartbeat processing failed: {str(e)}")
-
-
-async def handle_timeouts(watchdog: Watchdog, orchestrator: OrchestratorService):
-    try:
-        async for scenario_id in watchdog.check_timeouts():
-            logger.warning(f"Heartbeat timeout for {scenario_id}, restarting")
-            try:
-                await orchestrator.restart_scenario(scenario_id)
-            except Exception as e:
-                logger.error(f"Failed to restart scenario: {str(e)}")
-    except Exception as e:
-        logger.error(f"Timeout handler failed: {str(e)}")
+        logger.error(f"[Orchestrator] Heartbeat processing failed: {str(e)}")
 
 
 async def process_commands(consumers: Consumer, orchestrator: OrchestratorService):
@@ -68,9 +71,9 @@ async def process_commands(consumers: Consumer, orchestrator: OrchestratorServic
             try:
                 await orchestrator.process_command(command)
             except Exception as e:
-                logger.error(f"Command processing failed: {str(e)}")
+                logger.error(f"[Orchestrator] Command processing failed: {str(e)}")
     except Exception as e:
-        logger.error(f"Command processing failed: {str(e)}")
+        logger.error(f"[Orchestrator] Command processing failed: {str(e)}")
 
 
 async def shutdown(consumers, orchestrator, outbox_worker, watchdog):
@@ -82,9 +85,8 @@ async def shutdown(consumers, orchestrator, outbox_worker, watchdog):
     await orchestrator.stop()
     await outbox_worker.stop()
 
-    logger.info("Orchestrator shutdown complete")
+    logger.info("[Orchestrator] Orchestrator shutdown complete")
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())

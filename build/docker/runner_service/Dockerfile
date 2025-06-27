@@ -11,7 +11,8 @@ COPY --chown=appuser:appgroup build/whl /whl
 COPY --chown=appuser:appgroup source/runner_service/ /app
 
 ARG LIBS
-RUN pip install --no-cache-dir misis_runner --find-links /whl/ && \
+RUN pip3 config set global.index-url https://mirrors.sustech.edu.cn/pypi/simple && \
+    pip3 install --default-timeout=3000 --retries=10 --no-cache-dir misis_runner --find-links /whl/ && \
     rm -rf /root/.cache/pip
 
 ENV PYTHONPATH=/app

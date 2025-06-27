@@ -9,6 +9,7 @@ from misis_inference.models.prediction_response import PredictionResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 prediction_service = PredictionService()
 
 

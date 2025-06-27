@@ -1,8 +1,10 @@
 from typing import AsyncGenerator
 
-from misis_scenario_api.app.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+from misis_scenario_api.app.config import settings
+
 
 engine = create_async_engine(
     f"postgresql+asyncpg://{settings.DB_USER}:{settings.DB_PASSWORD} \
@@ -14,7 +16,8 @@ engine = create_async_engine(
 async_session = sessionmaker(
     bind=engine,
     class_=AsyncSession,
-    expire_on_commit=False
+    expire_on_commit=False,
+    autoflush=False,
 )
 
 

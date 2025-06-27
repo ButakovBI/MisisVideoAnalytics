@@ -6,6 +6,7 @@ from misis_runner.app.config import settings
 from misis_runner.kafka.producer import Producer
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class HeartbeatSender:
@@ -32,6 +33,7 @@ class HeartbeatSender:
                 ]
                 if tasks:
                     await asyncio.gather(*tasks, return_exceptions=True)
+                    logger.info("[Runner] Heartbeat sender: starting tasks")
 
                 await asyncio.sleep(settings.HEARTBEAT_INTERVAL)
             except Exception as e:
@@ -46,8 +48,9 @@ class HeartbeatSender:
                 scenario_id=scenario_id,
                 last_frame=processor.last_processed_frame
             )
+            logger.info("[Runner] Heartbeat sender: sent heartbeat")
         except Exception as e:
-            logger.error(f"Heartbeat send failed for {scenario_id}: {str(e)}")
+            logger.error(f"[Runner] Heartbeat send failed for {scenario_id}: {str(e)}")
 
     async def stop(self):
         self._running = False

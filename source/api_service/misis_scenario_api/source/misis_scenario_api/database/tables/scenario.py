@@ -1,6 +1,7 @@
-from misis_scenario_api.database.base import Base
 from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import UUID
+
+from misis_scenario_api.database.base import Base
 
 
 class Scenario(Base):

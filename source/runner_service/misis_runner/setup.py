@@ -1,7 +1,7 @@
 import setuptools
 
 PACKAGE_NAME = 'misis_runner'
-VERSION = '2.0.1'
+VERSION = '2.1.0'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [

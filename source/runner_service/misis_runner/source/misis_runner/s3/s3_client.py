@@ -7,6 +7,7 @@ import aioboto3
 from misis_runner.app.config import settings
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class S3Client:
@@ -45,7 +46,7 @@ class S3Client:
         data = {
             "scenario_id": str(scenario_id),
             "frame_number": frame_number,
-            "predictions": predictions
+            "predictions": [box.dict() for box in predictions]
         }
 
         async with self.session.client(
@@ -57,6 +58,7 @@ class S3Client:
             await client.put_object(
                 Bucket=settings.S3_PREDICTIONS_BUCKET,
                 Key=key,
-                Body=json.dumps(data).encode('utf-8')
+                Body=json.dumps(data).encode('utf-8'),
+                ContentType='application/json',
             )
             logger.info(f"[Runner] S3 client: Predictions saved to S3: {key}")

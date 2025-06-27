@@ -3,9 +3,12 @@ import logging
 from uuid import UUID
 
 import aioboto3
+
+from misis_scenario_api.models.bounding_box import BoundingBox
 from misis_scenario_api.app.config import settings
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class S3Client:
@@ -13,7 +16,7 @@ class S3Client:
         self.session = aioboto3.Session()
 
     async def upload_video(self, bucket: str,
-                           s3_link: str, video_bytes: bytes) -> str:
+                           s3_link: str, video_bytes: bytes) -> None:
         async with self.session.client(
             's3',
             endpoint_url=settings.S3_ENDPOINT,
@@ -26,7 +29,7 @@ class S3Client:
                 Body=video_bytes
             )
 
-    async def get_predictions(self, scenario_id: UUID) -> list:
+    async def get_predictions(self, scenario_id: UUID) -> list[BoundingBox]:
         prefix = f"predictions/{scenario_id}/"
         predictions = []
 
@@ -50,6 +53,6 @@ class S3Client:
                     data = json.loads(await response['Body'].read())
                     predictions.append(data)
                 except Exception as e:
-                    logger.error(f"[API] S3 client: Failed to load prediction {obj['Key']}: {str(e)}")
+                    logger.error(f"[API S3] S3 client: Failed to load prediction {obj['Key']}: {str(e)}")
 
         return sorted(predictions, key=lambda x: x["frame_number"])

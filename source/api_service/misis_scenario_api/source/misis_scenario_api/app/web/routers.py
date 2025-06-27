@@ -2,6 +2,8 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from misis_scenario_api.app.web.scenario_service import ScenarioService
 from misis_scenario_api.database.database import get_db_session
 from misis_scenario_api.kafka.producer import Producer
@@ -10,11 +12,11 @@ from misis_scenario_api.models.prediction_response import PredictionResponse
 from misis_scenario_api.models.scenario_status_response import \
     ScenarioStatusResponse
 from misis_scenario_api.s3.s3_client import S3Client
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 @router.post(
@@ -55,10 +57,10 @@ async def update_scenario(
         service = ScenarioService(db=db, producer=producer, s3_client=None)
         return await service.update_scenario(scenario_id=scenario_id, command=command)
     except Exception as e:
-        logger.error(f"[API] Updating scenario failed: {str(e)}", )
+        logger.error(f"[API] Updating scenario failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Updating scenario failed: {str(e)}. Try to restart scenario"
+            detail=f"Updating scenario failed: {str(e)}"
         )
 
 

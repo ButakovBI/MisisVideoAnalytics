@@ -13,6 +13,7 @@ from misis_orchestrator.models.heartbeat import Heartbeat
 from misis_orchestrator.models.scenario_command import ScenarioCommand
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class Consumer:
@@ -39,13 +40,16 @@ class Consumer:
             try:
                 msg = await self.commands_consumer.getone()
                 if msg:
+                    logger.info("[Orchestrator] Consumer get msg")
                     data = msg.value
                     event_type = data.get("event_type")
-                    if event_type in [ScenarioStatus.INIT_STARTUP, ScenarioStatus.INIT_SHUTDOWN]:
+                    if event_type in [ScenarioStatus.INIT_STARTUP.value, ScenarioStatus.INIT_SHUTDOWN.value]:
+                        payload = data.get("payload", {})
                         yield ScenarioCommand(
                             scenario_id=UUID(data["scenario_id"]),
-                            type=CommandType.START if event_type == ScenarioStatus.INIT_STARTUP else CommandType.STOP,
+                            type=CommandType.START.value if event_type == ScenarioStatus.INIT_STARTUP.value else CommandType.STOP.value,
                             video_path=data.get("payload", {}).get("video_path"),
+                            resume_from_frame=payload.get("resume_from_frame", 0)
                         )
             except ConsumerStoppedError:
                 break
@@ -58,6 +62,7 @@ class Consumer:
             try:
                 msg = await self.heartbeats_consumer.getone()
                 if msg:
+                    logger.info("[Orchestrator] Consumer get heartbeat")
                     data = msg.value
                     yield Heartbeat(
                         scenario_id=UUID(data["scenario_id"]),

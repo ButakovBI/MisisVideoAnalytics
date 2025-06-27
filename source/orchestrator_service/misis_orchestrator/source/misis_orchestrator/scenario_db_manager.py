@@ -3,12 +3,13 @@ from uuid import UUID
 
 from sqlalchemy import delete, func, insert, select, update
 
-from misis_orchestrator.database.tables.heartbeat import HeartbeatModel
+from misis_orchestrator.database.tables.heartbeat import Heartbeat
 from misis_orchestrator.database.tables.outbox import Outbox
 from misis_orchestrator.database.tables.scenario import Scenario
 from misis_orchestrator.models.constants.scenario_status import ScenarioStatus
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class ScenarioDBManager:
@@ -46,18 +47,21 @@ class ScenarioDBManager:
             .values(status=status)
         )
 
-    async def create_heartbeat(self, scenario_id: UUID, session):
-        await session.execute(
-            insert(HeartbeatModel)
-            .values(scenario_id=scenario_id, last_timestamp=func.now())
-            .on_conflict_do_update(
-                index_elements=['scenario_id'],
-                set_={'last_timestamp': func.now()}
-            )
+    async def create_heartbeat(self, scenario_id: UUID, last_frame: int, session):
+        result = await session.execute(
+            update(Heartbeat)
+            .where(Heartbeat.scenario_id == scenario_id)
+            .values(last_timestamp=func.now(), last_frame=last_frame, is_active=True)
         )
+
+        if result.rowcount == 0:
+            await session.execute(
+                insert(Heartbeat)
+                .values(scenario_id=scenario_id, last_timestamp=func.now(), last_frame=last_frame)
+            )
 
     async def delete_heartbeat(self, scenario_id: UUID, session):
         await session.execute(
-            delete(HeartbeatModel)
-            .where(HeartbeatModel.scenario_id == scenario_id)
+            delete(Heartbeat)
+            .where(Heartbeat.scenario_id == scenario_id)
         )

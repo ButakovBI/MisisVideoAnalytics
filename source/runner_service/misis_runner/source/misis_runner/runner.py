@@ -11,6 +11,7 @@ from misis_runner.kafka.consumer import Consumer
 from misis_runner.s3.s3_client import S3Client
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class Runner:
@@ -22,7 +23,6 @@ class Runner:
         self.inference_client = InferenceClient(
             base_url=settings.INFERENCE_SERVICE_URL
         )
-        self.processing_semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_SCENARIOS)
 
     async def start(self):
         await self.heartbeat_sender.producer.start()
@@ -34,14 +34,11 @@ class Runner:
             get_active_scenarios=lambda: self.active_scenarios
         )
 
-    async def handle_start(self, scenario_id: UUID, s3_video_key: str):
+    async def handle_start(self, scenario_id: UUID, s3_video_key: str, resume_from_frame: int = 0):
         if scenario_id in self.active_scenarios:
-            logger.warning(f"[Runner] Scenario already runnign {scenario_id}")
+            logger.info(f"[Runner] Scenario already runnign {scenario_id}")
             await self.handle_stop(scenario_id)
             await asyncio.sleep(0.1)
-        if len(self.active_scenarios) >= settings.MAX_CONCURRENT_SCENARIOS:
-            logger.info(f"[Runner] Reached max scenarios limit, rejecting {scenario_id}")
-            return
         try:
             logger.info(f"[Runner] Starting scenario {scenario_id}")
             processor = VideoProcessor(
@@ -49,6 +46,7 @@ class Runner:
                 s3_video_key=s3_video_key,
                 s3_client=self.s3_client,
                 inference_client=self.inference_client,
+                resume_from_frame=resume_from_frame,
             )
             self.active_scenarios[scenario_id] = processor
             asyncio.create_task(self._run_processor(processor))
@@ -58,6 +56,8 @@ class Runner:
             self.active_scenarios.pop(scenario_id, None)
 
     async def handle_stop(self, scenario_id: UUID):
+        if scenario_id not in self.active_scenarios:
+            return
         processor = self.active_scenarios.pop(scenario_id, None)
         if processor:
             processor.stop()
@@ -75,11 +75,10 @@ class Runner:
     async def _run_processor(self, processor: VideoProcessor):
         start_time = time.time()
         try:
-            async with self.processing_semaphore:
-                await processor.process()
-            logger.info(f"Scenario {processor.scenario_id} completed in {time.time() - start_time}s")
+            await processor.process()
+            logger.info(f"[Runner] Scenario {processor.scenario_id} completed in {time.time() - start_time}s")
         except Exception as e:
-            logger.error(f"Scenario processing failed: {str(e)}")
+            logger.error(f"[Runner] Scenario processing failed: {str(e)}")
         finally:
             if processor.scenario_id in self.active_scenarios:
                 del self.active_scenarios[processor.scenario_id]

@@ -1,7 +1,7 @@
 import setuptools
 
 PACKAGE_NAME = 'misis_inference'
-VERSION = '2.0.2'
+VERSION = '2.0.3'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [

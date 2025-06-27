@@ -12,6 +12,7 @@ from misis_inference.models.prediction_response import PredictionResponse
 
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class PredictionService:

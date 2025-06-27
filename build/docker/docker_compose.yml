@@ -57,15 +57,16 @@ services:
 
   minio:
     image: bitnami/minio:latest
-    command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
       - "9001:9001"
+    restart: unless-stopped
     networks:
       - video-analytics-network
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_DEFAULT_BUCKETS: "videos,predictions"
     user: root
     volumes:
       - minio_data:/data
@@ -166,7 +167,6 @@ services:
   runner_service:
     image: misis-runner_service
     environment:
-      RUNNER_ID: runner_${HOSTNAME}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       INFERENCE_SERVICE_URL: http://localhost:8001
       S3_ENDPOINT: http://minio:9000

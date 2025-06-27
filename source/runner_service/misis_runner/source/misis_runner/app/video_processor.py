@@ -6,12 +6,14 @@ from uuid import UUID
 import cv2
 
 from misis_runner.inference_client import InferenceClient
+from misis_runner.models.bounding_box import BoundingBox
 from misis_runner.s3.s3_client import S3Client
 
 FRAME_SKIP = 10
 SIZE = (640, 480)
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class VideoProcessor:
@@ -20,7 +22,8 @@ class VideoProcessor:
         scenario_id: UUID,
         s3_video_key: str,
         s3_client: S3Client,
-        inference_client: InferenceClient
+        inference_client: InferenceClient,
+        resume_from_frame: int = 0
     ):
         self.scenario_id = scenario_id
         self.s3_video_key = s3_video_key
@@ -28,7 +31,7 @@ class VideoProcessor:
         self.inference_client = inference_client
         self._stop_event = asyncio.Event()
         self.is_stopping = False
-        self.last_processed_frame = 0
+        self.last_processed_frame = resume_from_frame
         self.processed_frames = 0
         self.temp_video_path = None
         self.current_frame_task = None
@@ -43,10 +46,21 @@ class VideoProcessor:
             if self._stop_event.is_set():
                 return
 
+            logger.info("[Runner] Video processor: starting process")
+
             cap = await loop.run_in_executor(None, cv2.VideoCapture, self.temp_video_path)
             is_opened = await loop.run_in_executor(None, cap.isOpened)
             if not is_opened:
                 raise ValueError(f"Failed to open video {self.temp_video_path}")
+
+            if self.last_processed_frame > 0:
+                await loop.run_in_executor(
+                    None,
+                    cap.set,
+                    cv2.CAP_PROP_POS_FRAMES,
+                    self.last_processed_frame
+                )
+                logger.info(f"[Runner] Resuming from frame {self.last_processed_frame}")
 
             while not self._stop_event.is_set():
                 ret, frame = await loop.run_in_executor(None, cap.read)
@@ -100,7 +114,7 @@ class VideoProcessor:
         await self._save_predictions(predictions)
         self.processed_frames += 1
 
-    async def _save_predictions(self, predictions: list):
+    async def _save_predictions(self, predictions: list[BoundingBox]):
         if not predictions:
             return
 
@@ -110,6 +124,6 @@ class VideoProcessor:
                 frame_number=self.last_processed_frame,
                 predictions=predictions
             )
-            logger.debug(f"[Runner] Saved predictions for frame {self.last_processed_frame}")
+            logger.info(f"[Runner] Saved predictions for frame {self.last_processed_frame}")
         except Exception as e:
             logger.error(f"[Runner] Failed to save predictions: {str(e)}")

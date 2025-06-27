@@ -6,6 +6,7 @@ import httpx
 from misis_runner.models.bounding_box import BoundingBox
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class InferenceClient:
@@ -22,7 +23,11 @@ class InferenceClient:
             )
             response.raise_for_status()
             data = response.json()
-            return [BoundingBox(**box) for box in data.get("predictions", [])]
+
+            if not isinstance(data.get("predictions"), list):
+                raise ValueError("Invalid predictions format")
+            logger.info("[Runner] Got predictions from inference service")
+            return [BoundingBox(**box) for box in data["predictions"]]
         except Exception as e:
             logger.error(f"[Runner] Inference request failed: {str(e)}")
             raise
