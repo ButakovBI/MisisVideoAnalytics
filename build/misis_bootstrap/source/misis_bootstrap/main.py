@@ -1,3 +1,4 @@
+import argparse
 import os
 from pathlib import Path
 
@@ -8,9 +9,19 @@ PROJECT_ROOT = Path(os.environ['REPO_ROOT']).resolve()
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Build selected local packages into wheels")
+    parser.add_argument(
+        "--packages",
+        nargs="+",
+        help="List of package names to build space-separated",
+    )
+    args = parser.parse_args()
     wheel_dir = PROJECT_ROOT / "build" / "whl"
 
-    local_packages = PackageManager.get_local_packages()
+    if args.packages:
+        packages_to_build = args.packages
+    else:
+        packages_to_build = PackageManager.get_local_packages()
 
     bootstrap = Bootstrap(wheel_dir, PROJECT_ROOT)
-    bootstrap.build_wheels(local_packages)
+    bootstrap.build_wheels(packages_to_build)

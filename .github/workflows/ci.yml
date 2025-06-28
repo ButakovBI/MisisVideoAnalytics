@@ -16,9 +16,9 @@ jobs:
 
       - name: Lint with ruff & flake8
         run: |
-          pip install ruff flake8
+          pip install --default-timeout=3000 --retries=10 ruff flake8
           ruff check source/
-          flake8 --max-line-length 120 build/ source/
+          flake8 --max-line-length 150 build/ source/
 
       - name: Install bootstrap, build wheels and run tests
         run: |

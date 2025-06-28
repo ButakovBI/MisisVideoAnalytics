@@ -8,7 +8,7 @@ rm -rf "$REPO_ROOT/build/whl"
 mkdir -p "$REPO_ROOT/build/whl"
 
 echo "Installing bootstrap..."
-pip3 install "$REPO_ROOT/build/misis_bootstrap"
+pip3 install --default-timeout=3000 --retries=10 "$REPO_ROOT/build/misis_bootstrap"
 
 echo "Building packages..."
 misis-bootstrap
@@ -20,10 +20,19 @@ if [ -z "$(ls -A "$REPO_ROOT/build/whl")" ]; then
 fi
 
 echo "Installing builder..."
-pip3 install "$REPO_ROOT"/build/whl/misis_builder-*.whl
+pip3 install --default-timeout=3000 --retries=10 "$REPO_ROOT"/build/whl/misis_builder-*.whl
 
 if [[ "$1" == "--test" ]]; then
     misis-build-run --test
 else
     misis-build-run
 fi
+
+# [debug] для сборки конкретного пакета
+# misis-bootstrap --packages misis_runner
+
+# [debug] сборка контейнеров конкретных сервисов
+# TODO: Сделать в misis_builder специальный флаг для сборки одного отдельного сервиса
+# docker build -f build/docker/orchestrator_service/Dockerfile -t misis-orchestrator_service . 
+# docker build -f build/docker/api_service/Dockerfile -t misis-api_service .
+# docker build -f build/docker/runner_service/Dockerfile -t misis-runner_service .
