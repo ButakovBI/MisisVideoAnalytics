@@ -9,7 +9,6 @@ from misis_scenario_api.app.config import settings
 engine = create_async_engine(
     f"postgresql+asyncpg://{settings.DB_USER}:{settings.DB_PASSWORD} \
     @{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}",
-    isolation_level="REPEATABLE READ",
     pool_pre_ping=True
 )
 

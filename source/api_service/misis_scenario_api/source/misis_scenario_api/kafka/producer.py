@@ -15,7 +15,7 @@ class Producer:
 
     async def send(self, topic: str, value: dict):
         await self.producer.send_and_wait(topic, value=value)
-        logger.info("[API] Producer sent msg")
+        logger.info(f"[API] Producer sent msg: {value}")
 
     async def start(self):
         self.producer = AIOKafkaProducer(

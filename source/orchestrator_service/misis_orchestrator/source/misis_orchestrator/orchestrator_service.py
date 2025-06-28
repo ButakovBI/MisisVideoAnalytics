@@ -101,6 +101,7 @@ class OrchestratorService:
                 raise
 
     async def restart_scenario(self, scenario_id: UUID, session: AsyncSession):
+        logger.info("[Orchestrator] Restarting scenario...")
         current_status = await self.scenario_manager.get_status(scenario_id, session=session)
         if current_status != ScenarioStatus.ACTIVE.value:
             logger.warning(f"[Orchestrator] Skipping restart for non-active scenario {scenario_id}")
@@ -116,18 +117,21 @@ class OrchestratorService:
                 .where(Heartbeat.scenario_id == scenario_id)
                 .values(is_active=False)
             )
+            logger.info("[Orchestrator] Heartbeat status changed to inactive")
 
             result = await session.execute(
                 select(Heartbeat.last_frame)
                 .where(Heartbeat.scenario_id == scenario_id)
             )
             last_frame = result.scalar_one_or_none() or 0
+            logger.info(f"[Orchestrator] Get last frame for restarting scenario: '{last_frame}'")
 
             await self.scenario_manager.update_status(
                 scenario_id=scenario_id,
                 status=ScenarioStatus.IN_STARTUP_PROCESSING,
                 session=session
             )
+            logger.info(f"[Orchestrator] Updated status to '{ScenarioStatus.IN_STARTUP_PROCESSING}'")
 
             await self.scenario_manager.create_outbox_event(
                 scenario_id=scenario_id,
@@ -136,6 +140,7 @@ class OrchestratorService:
                          "resume_from_frame": last_frame},
                 session=session,
             )
+            logger.info(f"[Orchestrator] Created outbox event with '{ScenarioStatus.IN_STARTUP_PROCESSING}' status")
 
             await self.scenario_manager.upsert_heartbeat(
                 scenario_id=scenario_id,
@@ -180,7 +185,13 @@ class OrchestratorService:
                             session=session
                         )
                         logger.info(f"[Orchestrator] Status updated to {ScenarioStatus.ACTIVE.value}")
-
+                    elif current_status == ScenarioStatus.IN_SHUTDOWN_PROCESSING.value:
+                        await self.scenario_manager.update_status(
+                            scenario_id,
+                            ScenarioStatus.INACTIVE,
+                            session=session
+                        )
+                        logger.info(f"[Orchestrator] Status updated to {ScenarioStatus.INACTIVE.value}")
                     elif current_status != ScenarioStatus.ACTIVE.value:
                         logger.warning(f"[Orchestrator] Heartbeat rejected for scenario in status {current_status}")
                         return
@@ -188,7 +199,7 @@ class OrchestratorService:
                         scenario_id=scenario_id,
                         last_frame=last_frame,
                         session=session,
-                        runner_id=runner_id
+                        runner_id=runner_id,
                     )
                     logger.info("[Orchestrator] Update heartbeat success")
         except Exception as e:
@@ -196,3 +207,24 @@ class OrchestratorService:
 
     async def stop(self):
         await self.producer.stop()
+
+    async def check_inactive_heartbeats(self):
+        async for session in self.session_factory():
+            async with session.begin():
+                query = select(Scenario.id).select_from(Scenario).join(
+                    Heartbeat,
+                    Scenario.id == Heartbeat.scenario_id
+                ).where(
+                    Scenario.status == ScenarioStatus.IN_SHUTDOWN_PROCESSING.value,
+                    Heartbeat.is_active == False  # noqa E712
+                )
+                result = await session.execute(query)
+                scenario_ids = result.scalars().all()
+
+                for scenario_id in scenario_ids:
+                    await self.scenario_manager.update_status(
+                        scenario_id,
+                        ScenarioStatus.INACTIVE,
+                        session=session
+                    )
+                    logger.info(f"[Orchestrator] Scenario {scenario_id} set to INACTIVE due to inactive heartbeat")

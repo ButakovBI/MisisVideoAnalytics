@@ -137,6 +137,7 @@ class ScenarioService:
                     .where(Scenario.id == scenario_id)
                     .values(status=new_status)
                 )
+                logger.info(f"[API Update] Scenario status changed to {new_status}")
 
                 await self.db.execute(
                     insert(Outbox).values(
@@ -146,9 +147,10 @@ class ScenarioService:
                         payload=payload,
                     )
                 )
+                logger.info(f"[API Update] Insert to outbox '{event_type}'")
 
                 await transaction.commit()
-                logger.info(f"[API Update] Scenario {scenario_id} status updated to {new_status}")
+                logger.info("[API Update] Scenario status update success")
 
             return ScenarioStatusResponse(
                 scenario_id=scenario_id,

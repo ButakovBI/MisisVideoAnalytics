@@ -17,12 +17,15 @@ logging.basicConfig(level=logging.INFO)
 class Runner:
     def __init__(self):
         self.active_scenarios: dict[UUID, VideoProcessor] = {}
-        self.consumer = Consumer()
+        self.stopping_scenarios = set()
+        self.lock = asyncio.Lock()
+        self.consumer = Consumer(self)
         self.heartbeat_sender = HeartbeatSender()
         self.s3_client = S3Client()
         self.inference_client = InferenceClient(
             base_url=settings.INFERENCE_SERVICE_URL
         )
+        self.max_concurrent = 1
 
     async def handle_start(self, scenario_id: UUID, s3_video_key: str, resume_from_frame: int = 0):
         if scenario_id in self.active_scenarios:
@@ -45,11 +48,11 @@ class Runner:
             self.active_scenarios.pop(scenario_id, None)
 
     async def handle_stop(self, scenario_id: UUID):
-        if scenario_id not in self.active_scenarios:
-            return
-        processor = self.active_scenarios.pop(scenario_id, None)
-        if processor:
-            processor.stop()
+        if scenario_id in self.active_scenarios:
+            self.stopping_scenarios.add(scenario_id)
+            processor = self.active_scenarios.pop(scenario_id)
+            if processor:
+                processor.stop()
 
     async def start(self):
         await self.heartbeat_sender.producer.start()
@@ -60,6 +63,13 @@ class Runner:
         await self.heartbeat_sender.start(
             get_active_scenarios=lambda: self.active_scenarios
         )
+
+    def is_available(self):
+        return len(self.active_scenarios) < self.max_concurrent
+
+    async def cleanup_scenario(self, scenario_id: UUID):
+        async with self.lock:
+            self.stopping_scenarios.discard(scenario_id)
 
     async def stop(self):
         logger.info("[Runner] Stopping runner...")
@@ -81,6 +91,7 @@ class Runner:
         finally:
             if processor.scenario_id in self.active_scenarios:
                 del self.active_scenarios[processor.scenario_id]
+                logger.info(f"[Runner] Slot released for {processor.scenario_id}")
             try:
                 await self.heartbeat_sender.producer.send_heartbeat(
                     processor.scenario_id,

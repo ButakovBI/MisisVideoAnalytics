@@ -2,7 +2,7 @@ import setuptools
 from misis_bootstrap.package_manager import PackageManager
 
 PACKAGE_NAME = 'misis_orchestrator'
-VERSION = '2.1.0'
+VERSION = '2.1.1'
 AUTHOR = 'ButakovBI'
 
 REQUIRES = [

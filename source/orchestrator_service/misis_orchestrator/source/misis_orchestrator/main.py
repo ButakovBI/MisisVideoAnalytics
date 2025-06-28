@@ -37,7 +37,8 @@ async def main():
         run_task_with_restart(outbox_worker.start),
         run_task_with_restart(process_heartbeats, consumers, orchestrator),
         run_task_with_restart(watchdog.check_timeouts),
-        run_task_with_restart(process_commands, consumers, orchestrator)
+        run_task_with_restart(process_commands, consumers, orchestrator),
+        run_task_with_restart(check_inactive_heartbeats, orchestrator),
     ]
 
     try:
@@ -73,6 +74,16 @@ async def process_commands(consumers: Consumer, orchestrator: OrchestratorServic
                 logger.error(f"[Orchestrator] Command processing failed: {str(e)}")
     except Exception as e:
         logger.error(f"[Orchestrator] Command processing failed: {str(e)}")
+
+
+async def check_inactive_heartbeats(orchestrator: OrchestratorService):
+    while True:
+        try:
+            logger.info("[Orchestrator] Check scenarios for inactiveness...")
+            await orchestrator.check_inactive_heartbeats()
+        except Exception as e:
+            logger.error(f"Error in inactive heartbeats check: {e}")
+        await asyncio.sleep(15)
 
 
 async def shutdown(consumers, orchestrator, outbox_worker, watchdog):

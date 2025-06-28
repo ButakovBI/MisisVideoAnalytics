@@ -1,4 +1,5 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 from uuid import UUID
@@ -41,64 +42,64 @@ class VideoProcessor:
             logger.info("[Runner] This scenario already completed, check predictions")
             return
         loop = asyncio.get_running_loop()
-        cap = None
-        try:
-            if self._stop_event.is_set():
-                return
-            self.temp_video_path = await self.s3_client.download_video(self.s3_video_key)
-            if self._stop_event.is_set():
-                return
+        with ThreadPoolExecutor() as executor:
+            cap = None
+            try:
+                if self._stop_event.is_set():
+                    return
+                self.temp_video_path = await self.s3_client.download_video(self.s3_video_key)
+                if self._stop_event.is_set():
+                    return
 
-            logger.info("[Runner] Video processor: starting process")
+                logger.info("[Runner] Video processor: starting process")
 
-            cap = await loop.run_in_executor(None, cv2.VideoCapture, self.temp_video_path)
-            is_opened = await loop.run_in_executor(None, cap.isOpened)
-            if not is_opened:
-                raise ValueError(f"Failed to open video {self.temp_video_path}")
+                cap = await loop.run_in_executor(executor, cv2.VideoCapture, self.temp_video_path)
+                is_opened = await loop.run_in_executor(executor, cap.isOpened)
+                if not is_opened:
+                    raise ValueError(f"Failed to open video {self.temp_video_path}")
 
-            if self.last_processed_frame > 0:
-                await loop.run_in_executor(
-                    None,
-                    cap.set,
-                    cv2.CAP_PROP_POS_FRAMES,
-                    self.last_processed_frame
-                )
-                logger.info(f"[Runner] Resuming from frame {self.last_processed_frame}")
-
-            while not self._stop_event.is_set():
-                ret, frame = await loop.run_in_executor(None, cap.read)
-                self.last_processed_frame += 1
-
-                if not ret:
-                    logger.info(f"[Runner] Reached end of video at frame {self.last_processed_frame}")
-                    break
-
-                if self.last_processed_frame % FRAME_SKIP != 0:
-                    continue
-                try:
-                    self.current_frame_task = asyncio.create_task(
-                        self._process_frame(frame)
+                if self.last_processed_frame > 0:
+                    await loop.run_in_executor(
+                        executor,
+                        cap.set,
+                        cv2.CAP_PROP_POS_FRAMES,
+                        self.last_processed_frame
                     )
-                    await self.current_frame_task
-                except asyncio.CancelledError:
-                    logger.debug(f"[Runner] Frame processing cancelled for {self.scenario_id}")
-                    break
-                except Exception as e:
-                    logger.error(f"[Runner] Frame processing error: {str(e)}")
-        except Exception as e:
-            logger.error(f"[Runner] Video processing failed: {str(e)}")
-        finally:
-            if cap:
-                await loop.run_in_executor(None, cap.release)
-            if self.temp_video_path and os.path.exists(self.temp_video_path):
-                os.unlink(self.temp_video_path)
-            self.last_processed_frame = -1
-            self.is_stopping = True
-            logger.info(f"[Runner] Completed. Scenario {self.scenario_id}. Processed {self.processed_frames} frames")
+                    logger.info(f"[Runner] Resuming from frame {self.last_processed_frame}")
+
+                while not self._stop_event.is_set():
+                    ret, frame = await loop.run_in_executor(executor, cap.read)
+                    self.last_processed_frame += 1
+
+                    if not ret:
+                        logger.info(f"[Runner] Reached end of video at frame {self.last_processed_frame}")
+                        self.last_processed_frame = -1
+                        break
+
+                    if self.last_processed_frame % FRAME_SKIP != 0:
+                        continue
+                    try:
+                        self.current_frame_task = asyncio.create_task(
+                            self._process_frame(frame)
+                        )
+                        await self.current_frame_task
+                    except asyncio.CancelledError:
+                        logger.debug(f"[Runner] Frame processing cancelled for {self.scenario_id}")
+                        break
+                    except Exception as e:
+                        logger.error(f"[Runner] Frame processing error: {str(e)}")
+            except Exception as e:
+                logger.error(f"[Runner] Video processing failed: {str(e)}")
+            finally:
+                if cap:
+                    await loop.run_in_executor(executor, cap.release)
+                if self.temp_video_path and os.path.exists(self.temp_video_path):
+                    os.unlink(self.temp_video_path)
+                self.is_stopping = True
+                logger.info(f"[Runner] Completed. Scenario {self.scenario_id}. Processed {self.processed_frames} frames")
 
     def stop(self):
         self.is_stopping = True
-        self.last_processed_frame = -1
         self._stop_event.set()
         if self.current_frame_task:
             self.current_frame_task.cancel()
@@ -125,9 +126,6 @@ class VideoProcessor:
         await asyncio.sleep(5)
 
     async def _save_predictions(self, predictions: list[BoundingBox]):
-        if not predictions:
-            return
-
         try:
             await self.s3_client.save_predictions(
                 scenario_id=self.scenario_id,

@@ -34,10 +34,15 @@ class Watchdog:
 
     async def _check_timeouts(self):
         async for session in self.session_factory():
-            timed_out_scenarios = await self._get_timed_out_scenarios(session)
+            async with session.begin():
+                try:
+                    timed_out_scenarios = await self._get_timed_out_scenarios(session)
 
-            for scenario_id in timed_out_scenarios:
-                await self._handle_timed_out_scenario(session, scenario_id)
+                    for scenario_id in timed_out_scenarios:
+                        await self._handle_timed_out_scenario(session, scenario_id)
+                except Exception as e:
+                    logger.error(f"[Watchdog] Checking timeouts error: {str(e)}")
+                    await asyncio.sleep(5)
 
     async def _get_timed_out_scenarios(self, session: AsyncSession):
         timeout = timedelta(seconds=settings.HEARTBEAT_TIMEOUT)

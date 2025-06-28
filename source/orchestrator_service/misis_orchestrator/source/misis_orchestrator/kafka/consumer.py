@@ -47,10 +47,9 @@ class Consumer:
                 async for msg in self.commands_consumer:
                     if not self.running:
                         break
-                    logger.info(f"[Orchestrator] Consumer get msg: {msg}")
+                    logger.info(f"[Orchestrator] Consumer get msg: {msg.value}")
                     data = msg.value
                     event_type = data.get("event_type")
-                    logger.info(f"[Orchestrator] Consumer msg event type: {event_type}")
                     if event_type in [ScenarioStatus.INIT_STARTUP.value, ScenarioStatus.INIT_SHUTDOWN.value]:
                         try:
                             last_frame = await self._get_last_processed_frame(data["scenario_id"])

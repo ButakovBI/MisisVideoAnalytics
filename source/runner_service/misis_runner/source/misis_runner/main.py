@@ -9,10 +9,10 @@ logging.basicConfig(level=logging.INFO)
 
 async def main():
     runner = Runner()
+    shutdown_event = asyncio.Event()
     try:
         await runner.start()
-        while True:
-            await asyncio.sleep(3600)
+        await shutdown_event.wait()
     except KeyboardInterrupt:
         logger.info("[Runner] Received exit signal")
     finally:

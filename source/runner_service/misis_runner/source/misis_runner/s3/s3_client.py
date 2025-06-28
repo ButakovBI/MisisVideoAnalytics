@@ -1,9 +1,11 @@
+import asyncio
 import json
 import logging
 import tempfile
 from uuid import UUID
 
 import aioboto3
+
 from misis_runner.app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -13,6 +15,7 @@ logging.basicConfig(level=logging.INFO)
 class S3Client:
     def __init__(self):
         self.session = aioboto3.Session()
+        self.retry_count = 3
 
     async def download_video(self, s3_key: str) -> str:
         temp_file = None
@@ -48,17 +51,24 @@ class S3Client:
             "frame_number": frame_number,
             "predictions": [box.dict() for box in predictions]
         }
-
-        async with self.session.client(
-            's3',
-            endpoint_url=settings.S3_ENDPOINT,
-            aws_access_key_id=settings.S3_ACCESS_KEY,
-            aws_secret_access_key=settings.S3_SECRET_KEY
-        ) as client:
-            await client.put_object(
-                Bucket=settings.S3_PREDICTIONS_BUCKET,
-                Key=key,
-                Body=json.dumps(data).encode('utf-8'),
-                ContentType='application/json',
-            )
-            logger.info(f"[Runner] S3 client: Predictions saved to S3: {key}")
+        for attempt in range(self.retry_count):
+            try:
+                async with self.session.client(
+                    's3',
+                    endpoint_url=settings.S3_ENDPOINT,
+                    aws_access_key_id=settings.S3_ACCESS_KEY,
+                    aws_secret_access_key=settings.S3_SECRET_KEY
+                ) as client:
+                    await client.put_object(
+                        Bucket=settings.S3_PREDICTIONS_BUCKET,
+                        Key=key,
+                        Body=json.dumps(data).encode('utf-8'),
+                        ContentType='application/json',
+                    )
+                    logger.info(f"[Runner] S3 client: Predictions saved to S3: {key}")
+                return
+            except Exception as e:
+                logger.error(f"Failed to save predictions to S3: {str(e)}, retrying... ({attempt + 1}/{self.retry_count})")
+                if attempt == self.retry_count - 1:
+                    raise
+                await asyncio.sleep(1)

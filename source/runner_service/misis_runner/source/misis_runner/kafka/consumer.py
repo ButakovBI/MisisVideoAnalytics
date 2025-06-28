@@ -13,8 +13,9 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Consumer:
-    def __init__(self):
+    def __init__(self, runner):
         self._running = False
+        self.runner = runner
         self.start_consumer = AIOKafkaConsumer(
             KafkaTopic.RUNNER_COMMANDS.value,
             bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
@@ -22,6 +23,7 @@ class Consumer:
             enable_auto_commit=False,
             max_poll_interval_ms=settings.KAFKA_MAX_POLL_INTERVAL_MS,
             session_timeout_ms=60000,
+            max_poll_records=1,
         )
         self.stop_consumer = AIOKafkaConsumer(
             KafkaTopic.RUNNER_COMMANDS.value,
@@ -43,11 +45,26 @@ class Consumer:
         while self._running:
             try:
                 async for msg in self.start_consumer:
+                    logger.info("[Runner] msg in start_consumer")
                     if not self._running:
+                        logger.info("[Runner] Not running, break...")
                         break
 
                     data = json.loads(msg.value)
+                    logger.info(f"[Runner] Message data: {data}")
+
+                    if not self.runner.is_available():
+                        logger.info("Runner busy...")
+                        await asyncio.sleep(10)
+                        break
+
+                    if UUID(data["scenario_id"]) in self.runner.stopping_scenarios:
+                        await self.start_consumer.commit()
+                        logger.info("[Runner] Scenario already stopping")
+                        continue
+
                     logger.info(f"[Runner] Consumer mdg data: {data}")
+
                     if data.get("type") == "start":
                         required_fields = ["scenario_id", "video_path"]
                         if all(field in data for field in required_fields):
@@ -57,14 +74,16 @@ class Consumer:
                                 await handler(scenario_id, data["video_path"], resume_from_frame)
                                 await self.start_consumer.commit()
                             except Exception as e:
-                                logger.error(f"Failed to start scenario: {str(e)}")
+                                logger.error(f"[Runner] Failed to start scenario: {str(e)}")
                         else:
                             missing = [f for f in required_fields if f not in data]
-                            logger.warning(f"Missing required fields: {missing}")
+                            logger.warning(f"[Runner] Missing required fields: {missing}")
+                            await self.start_consumer.commit()
                     else:
-                        logger.debug(f"Ignoring message of type: {data.get('type')}")
+                        logger.info(f"[Runner] Ignoring message of type: {data.get('type')}")
+                        await self.start_consumer.commit()
             except Exception as e:
-                logger.error(f"[Runner] Start command processing failed: {str(e)}")
+                logger.error(f"[Runner] Start command processing failed: {e}")
                 await asyncio.sleep(1)
 
     async def _consume_stops(self, handler):
@@ -74,9 +93,22 @@ class Consumer:
                     if not self._running:
                         break
                     data = json.loads(msg.value)
+                    logger.info(f"[Runner] Message data: {data}")
+
+                    scenario_id = UUID(data["scenario_id"])
+
                     if data.get("type") == "stop":
                         logger.info("[Runner] Consumer process stop msg...")
-                        await handler(UUID(data["scenario_id"]))
+                        async with self.runner.lock:
+                            if scenario_id in self.runner.stopping_scenarios:
+                                continue
+                            self.runner.stopping_scenarios.add(scenario_id)
+                        try:
+                            await handler(scenario_id)
+                        except Exception as e:
+                            logger.error(f"Failed to stop scenario: {str(e)}")
+                        finally:
+                            await self.runner.cleanup_scenario(scenario_id)
             except Exception as e:
                 logger.error(f"[Runner] Stop command processing failed: {str(e)}")
                 await asyncio.sleep(1)

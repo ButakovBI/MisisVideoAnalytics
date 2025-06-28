@@ -44,12 +44,22 @@ class OutboxWorker:
                     async with session.begin():
                         result = await session.execute(
                             select(Outbox)
-                            .where(Outbox.processed == False)  # noqa E712
+                            .where(
+                                Outbox.processed == False,  # noqa E712
+                                Outbox.event_type.in_([
+                                    ScenarioStatus.IN_STARTUP_PROCESSING.value,
+                                    ScenarioStatus.IN_SHUTDOWN_PROCESSING.value
+                                ])
+                            )
                             .order_by(Outbox.created_at)
                             .limit(self.BATCH_SIZE)
                             .with_for_update(skip_locked=True)
                         )
                         events = result.scalars().all()
+
+                        if not events:
+                            logger.info("[Orch Outbox] No events to process")
+                            continue
 
                         processed_events = []
                         for event in events:
@@ -58,9 +68,9 @@ class OutboxWorker:
                             try:
                                 command_type = None
                                 logger.info(f"[Orch Outbox] Event type: {event.event_type}")
-                                if event.event_type in [ScenarioStatus.INIT_STARTUP.value, ScenarioStatus.IN_STARTUP_PROCESSING.value]:
+                                if event.event_type in [ScenarioStatus.IN_STARTUP_PROCESSING.value]:
                                     command_type = "start"
-                                elif event.event_type in [ScenarioStatus.INIT_SHUTDOWN.value, ScenarioStatus.IN_SHUTDOWN_PROCESSING.value]:
+                                elif event.event_type in [ScenarioStatus.IN_SHUTDOWN_PROCESSING.value]:
                                     command_type = "stop"
                                 message = {
                                     "type": command_type,

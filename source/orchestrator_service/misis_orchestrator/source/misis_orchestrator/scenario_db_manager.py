@@ -68,3 +68,4 @@ class ScenarioDBManager:
                 insert(Heartbeat)
                 .values(scenario_id=scenario_id, **values)
             )
+        logger.info(f"[Orchestrator] Update heartbeat with values {values}")
