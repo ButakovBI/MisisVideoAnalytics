@@ -1,8 +1,7 @@
 import json
-import os
 from pathlib import Path
 
-DEFAULT_VERSIONS_PATH = Path(os.environ['REPO_ROOT']).resolve() / "build" / "misis_bootstrap" / "versions.json"
+from misis_bootstrap.constants import DEFAULT_VERSIONS_PATH
 
 
 class PackageManager:

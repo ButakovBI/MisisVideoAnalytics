@@ -1,11 +1,8 @@
 import argparse
-import os
-from pathlib import Path
 
+from misis_bootstrap.constants import DEFAULT_WHEEL_DIR, PROJECT_ROOT
 from misis_bootstrap.package_manager import PackageManager
 from misis_bootstrap.bootstrap import Bootstrap
-
-PROJECT_ROOT = Path(os.environ['REPO_ROOT']).resolve()
 
 
 def main():
@@ -16,7 +13,7 @@ def main():
         help="List of package names to build space-separated",
     )
     args = parser.parse_args()
-    wheel_dir = PROJECT_ROOT / "build" / "whl"
+    wheel_dir = PROJECT_ROOT / DEFAULT_WHEEL_DIR
 
     if args.packages:
         packages_to_build = args.packages
