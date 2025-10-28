@@ -8,7 +8,7 @@ rm -rf "$REPO_ROOT/build/whl"
 mkdir -p "$REPO_ROOT/build/whl"
 
 echo "Installing bootstrap..."
-pip3 install --default-timeout=3000 --retries=10 "$REPO_ROOT/build/misis_bootstrap"
+pip3 install --default-timeout=3000 --retries=10 "$REPO_ROOT/build/package_bootstrap"
 
 echo "Building packages..."
 misis-bootstrap

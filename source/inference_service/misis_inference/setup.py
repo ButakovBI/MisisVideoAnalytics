@@ -1,5 +1,7 @@
 import setuptools
 
+from package_bootstrap.package_manager import PackageManager
+
 PACKAGE_NAME = 'misis_inference'
 VERSION = '2.0.3'
 AUTHOR = 'ButakovBI'
@@ -21,5 +23,5 @@ setuptools.setup(
     description='Misis Inference',
     packages=setuptools.find_packages(where='source'),
     package_dir={'': 'source'},
-    install_requires=REQUIRES
+    install_requires=PackageManager.get_versioned_packages(REQUIRES)
 )

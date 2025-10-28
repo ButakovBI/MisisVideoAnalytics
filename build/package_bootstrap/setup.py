@@ -1,6 +1,6 @@
 import setuptools
 
-PACKAGE_NAME = 'misis_bootstrap'
+PACKAGE_NAME = 'package_bootstrap'
 VERSION = '1.0.0'
 AUTHOR = 'ButakovBI'
 
@@ -8,8 +8,8 @@ setuptools.setup(
     name=PACKAGE_NAME,
     version=VERSION,
     author=AUTHOR,
-    description='Misis Bootstrap',
+    description='Package Bootstrap',
     packages=setuptools.find_packages(where='source'),
     package_dir={'': 'source'},
-    entry_points={'console_scripts': [f'misis-bootstrap={PACKAGE_NAME}.main:main']},
+    entry_points={'console_scripts': [f'package-bootstrap={PACKAGE_NAME}.main:main']},
 )
