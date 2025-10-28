@@ -11,7 +11,7 @@ echo "Installing bootstrap..."
 pip3 install --default-timeout=3000 --retries=10 "$REPO_ROOT/build/package_bootstrap"
 
 echo "Building packages..."
-misis-bootstrap
+package-bootstrap
 
 echo "Verifying wheels..."
 if [ -z "$(ls -A "$REPO_ROOT/build/whl")" ]; then
