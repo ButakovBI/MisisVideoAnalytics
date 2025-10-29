@@ -6,8 +6,8 @@ COPY build/whl /whl
 
 COPY source/api_service/ /app
 
-ARG LIBS
-RUN pip3 install --no-cache-dir ${LIBS} --find-links /whl && \
+RUN pip3 install pytest && \
+RUN pip3 install --no-cache-dir --find-links /whl && \
     rm -rf /root/.cache/pip
 
 ENV PYTHONPATH=/app

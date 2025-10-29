@@ -1,42 +1,48 @@
 {
-  "api_service": {
-    "dockerfile": "build/docker/api_service/Dockerfile",
-    "LIBS": ["misis_scenario_api"],
-    "IMAGE_ARGS": {}
-  },
-  "inference_service": {
-    "dockerfile": "build/docker/inference_service/Dockerfile",
-    "LIBS": ["misis_inference"],
-    "IMAGE_ARGS": {}
-  },
-  "orchestrator_service": {
-    "dockerfile": "build/docker/orchestrator_service/Dockerfile",
-    "LIBS": ["misis_orchestrator"],
-    "IMAGE_ARGS": {}
-  },
-  "runner_service": {
-    "dockerfile": "build/docker/runner_service/Dockerfile",
-    "LIBS": ["misis_runner"],
-    "IMAGE_ARGS": {}
-  },
-  "test_api_service": {
-    "dockerfile": "build/docker/api_service/test.Dockerfile",
-    "LIBS": ["misis_scenario_api", "pytest"],
-    "IMAGE_ARGS": {}
-  },
-  "test_inference_service": {
-    "dockerfile": "build/docker/inference_service/test.Dockerfile",
-    "LIBS": ["misis_inference", "pytest"],
-    "IMAGE_ARGS": {}
-  },
-  "test_orchestrator_service": {
-    "dockerfile": "build/docker/orchestrator_service/test.Dockerfile",
-    "LIBS": ["misis_orchestrator", "pytest"],
-    "IMAGE_ARGS": {}
-  },
-  "test_runner_service": {
-    "dockerfile": "build/docker/runner_service/test.Dockerfile",
-    "LIBS": ["misis_runner", "pytest"],
-    "IMAGE_ARGS": {}
-  }
+    "services": {
+        "prod_services": {
+            "api_service": {
+                "dockerfile": "build/docker/api_service/Dockerfile",
+                "LIBS": ["misis_scenario_api"],
+                "IMAGE_ARGS": {}
+            },
+            "inference_service": {
+                "dockerfile": "build/docker/inference_service/Dockerfile",
+                "LIBS": ["misis_inference"],
+                "IMAGE_ARGS": {}
+            },
+            "orchestrator_service": {
+                "dockerfile": "build/docker/orchestrator_service/Dockerfile",
+                "LIBS": ["misis_orchestrator"],
+                "IMAGE_ARGS": {}
+            },
+            "runner_service": {
+                "dockerfile": "build/docker/runner_service/Dockerfile",
+                "LIBS": ["misis_runner"],
+                "IMAGE_ARGS": {}
+            }
+        },
+        "test_services": {
+            "test_api_service": {
+                "dockerfile": "build/docker/api_service/test.Dockerfile",
+                "LIBS": ["misis_scenario_api", "pytest"],
+                "IMAGE_ARGS": {}
+            },
+            "test_inference_service": {
+                "dockerfile": "build/docker/inference_service/test.Dockerfile",
+                "LIBS": ["misis_inference", "pytest"],
+                "IMAGE_ARGS": {}
+            },
+            "test_orchestrator_service": {
+                "dockerfile": "build/docker/orchestrator_service/test.Dockerfile",
+                "LIBS": ["misis_orchestrator", "pytest"],
+                "IMAGE_ARGS": {}
+            },
+            "test_runner_service": {
+                "dockerfile": "build/docker/runner_service/test.Dockerfile",
+                "LIBS": ["misis_runner", "pytest"],
+                "IMAGE_ARGS": {}
+            }
+        }
+    }
 }
