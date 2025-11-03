@@ -5,7 +5,7 @@ from pathlib import Path
 
 from package_bootstrap.constants import BOOTSTRAP_NAME, DEFAULT_VERSIONS_PATH, PROJECT_ROOT
 
-_logger = logging.getLogger(BOOTSTRAP_NAME)
+_logger = logging.getLogger(__name__)
 
 
 class PackageManager:

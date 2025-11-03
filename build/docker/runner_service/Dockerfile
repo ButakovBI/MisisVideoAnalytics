@@ -7,7 +7,7 @@ RUN groupadd -r appgroup  && \
 
 WORKDIR /app
 
-COPY --chown=appuser:appgroup build/whl /whl
+COPY --chown=appuser:appgroup build/whl/misis_runner-*.whl /whl/
 COPY --chown=appuser:appgroup source/runner_service/ /app
 
 ARG LIBS

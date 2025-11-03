@@ -1,7 +1,7 @@
 [
   { "name": "misis_scenario_api", "version": "2.0.0" },
-  { "name": "package_bootstrap", "version": "2.0.0" },
-  { "name": "misis_builder", "version": "1.0.1" },
+  { "name": "package_bootstrap", "version": "2.0.1" },
+  { "name": "deploy_manager", "version": "2.0.0" },
   { "name": "misis_inference", "version": "1.0.0" },
   { "name": "misis_orchestrator", "version": "1.0.0" },
   { "name": "misis_runner", "version": "1.0.0" },

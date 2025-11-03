@@ -7,7 +7,7 @@ RUN groupadd -r appgroup  && \
 
 WORKDIR /app
 
-COPY --chown=appuser:appgroup build/whl /whl
+COPY --chown=appuser:appgroup build/whl/misis_inference-*.whl /whl/
 COPY --chown=appuser:appgroup source/inference_service/ /app
 
 ARG LIBS
