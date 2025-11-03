@@ -1,5 +1,5 @@
-from enum import StrEnum
 import os
+from enum import StrEnum
 from pathlib import Path
 
 PROJECT_ROOT = Path(os.environ['REPO_ROOT']).resolve()
@@ -7,6 +7,7 @@ PROJECT_ROOT = Path(os.environ['REPO_ROOT']).resolve()
 BUILD_DIR = 'build'
 DOCKER_DIR = 'docker'
 DOCKERFILE = 'dockerfile'
+ERROR = 'Error'
 LIBS = 'LIBS'
 SERVICES_SECTION = 'services'
 

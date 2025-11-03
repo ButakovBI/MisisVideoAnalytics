@@ -1,31 +1,26 @@
 import logging
-import subprocess
+
+from deploy_manager.common.subprocess_executor import SubprocessExecutor
 
 
 class DockerComposeRunner:
-    down_command = 'down'
-    up_command = 'up'
-    def __init__(self, compose_file: str):
+    DOWN_COMMAND = 'down'
+    UP_COMMAND = 'up'
+
+    def __init__(self, compose_file: str, executor: SubprocessExecutor):
         self._base_cmd = ['docker-compose', '-f', compose_file]
+        self._executor = executor
 
     def down_compose(self) -> None:
-        cmd = self._base_cmd + [self.down_command]
-        self._execute_cmd(cmd)
+        cmd = self._base_cmd + [self.DOWN_COMMAND]
+        self._executor.execute_cmd(cmd, f'Docker compose {self.DOWN_COMMAND} error')
 
     def up_compose(self, daemon: bool = True) -> None:
-        cmd = self._base_cmd + [self.up_command]
+        cmd = self._base_cmd + [self.UP_COMMAND]
         if daemon:
             cmd.append('-d')
-        self._execute_cmd(cmd)
-
-    def _execute_cmd(self, cmd: list[str]):
-        try:
-            subprocess.check_call(cmd)
-        except Exception as ex:
-            msg = f"Error while run {cmd}: {ex}"
-            self._logger.error(msg)
-            raise RuntimeError(msg)
+        self._executor.execute_cmd(cmd, f'Docker compose {self.UP_COMMAND} error')
 
     @property
     def _logger(self) -> logging.Logger:
-        return logging.getLogger()
+        return logging.getLogger(__name__)

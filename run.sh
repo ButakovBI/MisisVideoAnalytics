@@ -4,7 +4,7 @@ set -e
 
 export REPO_ROOT=$(pwd)
 
-rm -rf "$REPO_ROOT/build/whl"
+# rm -rf "$REPO_ROOT/build/whl"
 mkdir -p "$REPO_ROOT/build/whl"
 
 echo "Installing bootstrap..."
@@ -20,12 +20,12 @@ if [ -z "$(ls -A "$REPO_ROOT/build/whl")" ]; then
 fi
 
 echo "Installing builder..."
-pip3 install --default-timeout=3000 --retries=10 "$REPO_ROOT"/build/whl/misis_builder-*.whl
+pip3 install --default-timeout=3000 --retries=10 "$REPO_ROOT"/build/whl/deploy_manager-*.whl
 
 if [[ "$1" == "--test" ]]; then
-    misis-build-run --test
+    run-deploy --test
 else
-    misis-build-run
+    run-deploy
 fi
 
 # [debug] для сборки конкретного пакета

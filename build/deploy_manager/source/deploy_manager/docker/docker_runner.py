@@ -1,21 +1,16 @@
 import logging
-import subprocess
+
+from deploy_manager.common.subprocess_executor import SubprocessExecutor
 
 
 class DockerRunner:
-    @staticmethod
+    def __init__(self, executor: SubprocessExecutor):
+        self._executor = executor
+
     def run_container(self, image: str):
         cmd = ['docker', 'run', '--rm', image]
-        self._execute_cmd(cmd)
-
-    def _execute_cmd(self, cmd: list[str]):
-        try:
-            subprocess.check_call(cmd)
-        except Exception as ex:
-            msg = f"Error while run {cmd}: {ex}"
-            self._logger.error(msg)
-            raise RuntimeError(msg)
+        self._executor.execute_cmd(cmd, 'Run container error')
 
     @property
     def _logger(self) -> logging.Logger:
-        return logging.getLogger()
+        return logging.getLogger(__name__)

@@ -1,32 +1,26 @@
 import logging
-import subprocess
 
+from deploy_manager.common.subprocess_executor import SubprocessExecutor
 from deploy_manager.constants import DOCKERFILE, LIBS, PROJECT_ROOT
 
 
 class DockerBuilder:
-    def __init__(self, config: dict):
-        self._added_libs = ' '.join(config.get(LIBS))
-        self._config_data = config
+    def __init__(self, executor: SubprocessExecutor):
+        self._executor = executor
 
-    def build_image(self, image_name: str) -> None:
-        dockerfile_path = PROJECT_ROOT / self._config_data[DOCKERFILE]
+    def build_image(self, config_data: dict, image_name: str) -> None:
+        dockerfile_path = PROJECT_ROOT / config_data[DOCKERFILE]
         cmd = ['docker', 'build', '-f', str(dockerfile_path), '-t', image_name]
 
-        if self._added_libs:
-            cmd += ['--build-arg', f'{LIBS}={self._added_libs}']
+        added_libs = ' '.join(config_data.get(LIBS, []))
+        if added_libs:
+            cmd += ['--build-arg', f'{LIBS}={added_libs}']
 
         cmd.append(str(PROJECT_ROOT))
         self._logger.info(f'Building image {image_name}...')
-        try:
-            subprocess.check_call(cmd)
-            self._logger.info(f'Image {image_name} built successfully')
-        except Exception as ex:
-            msg = f'Error while building image {image_name}: {ex}'
-            self._logger.error(msg)
-            raise RuntimeError(msg)
+        error_context = f'Error while building image {image_name}'
+        self._executor.execute_cmd(cmd, error_context)
 
     @property
     def _logger(self) -> logging.Logger:
-        return logging.getLogger()
-
+        return logging.getLogger(__name__)
