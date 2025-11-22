@@ -12,7 +12,7 @@ ERROR = 'Error'
 PYTHON_BASE = 'python_base'
 PYTHON_BUILD = 'python_build'
 
-LIBS = 'libs'
+LIBS = 'LIBS'
 PARENT_IMAGE = 'PARENT_IMAGE'
 SERVICES_SECTION = 'services'
 
