@@ -8,8 +8,8 @@ RUN apt-get update \
 
 RUN python3 -m venv ${VENV_PATH}
 
-COPY pip.conf ${VENV_PATH}/pip.conf
-COPY entrypoint.sh /entrypoint.sh
+COPY build/docker/python_build/pip.conf ${VENV_PATH}/pip.conf
+COPY build/docker/python_build/entrypoint.sh /entrypoint.sh
 
 ENV VENV_PATH=${VENV_PATH}
 ENV PATH="${VENV_PATH}/bin:${PATH}"
