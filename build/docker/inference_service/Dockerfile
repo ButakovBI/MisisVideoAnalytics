@@ -4,7 +4,7 @@ FROM $PARENT_IMAGE AS builder
 
 ARG LIBS
 
-RUN pip3 install $LIBS --find-links /whl && rm -rf /whl
+# RUN pip3 install $LIBS --find-links /whl && rm -rf /whl
 
 FROM python:3.12-slim
 
