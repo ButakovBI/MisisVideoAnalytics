@@ -4,11 +4,16 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(os.environ['REPO_ROOT']).resolve()
 
+BASE_IMAGES = 'base_images'
 BUILD_DIR = 'build'
 DOCKER_DIR = 'docker'
 DOCKERFILE = 'dockerfile'
 ERROR = 'Error'
-LIBS = 'LIBS'
+PYTHON_BASE = 'python_base'
+PYTHON_BUILD = 'python_build'
+
+LIBS = 'libs'
+PARENT_IMAGE = 'PARENT_IMAGE'
 SERVICES_SECTION = 'services'
 
 DEFAULT_IMAGES_CONF_PATH = PROJECT_ROOT / BUILD_DIR / DOCKER_DIR / 'images_configuration.json'
