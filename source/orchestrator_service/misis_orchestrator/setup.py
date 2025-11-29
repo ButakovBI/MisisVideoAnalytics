@@ -1,5 +1,6 @@
 import setuptools
-from misis_bootstrap.package_manager import PackageManager
+
+from package_bootstrap.package_manager import PackageManager
 
 PACKAGE_NAME = 'misis_orchestrator'
 VERSION = '2.1.1'

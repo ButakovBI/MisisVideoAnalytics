@@ -2,6 +2,6 @@
 requires = [
     "setuptools",
     "wheel",
-    "misis_bootstrap"
+    "package_bootstrap"
 ]
 build-backend = "setuptools.build_meta"

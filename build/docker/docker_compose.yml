@@ -81,7 +81,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: postgres
@@ -99,7 +99,7 @@ services:
       - video-analytics-network
 
   orchestrator_service:
-    image: misis-orchestrator_service
+    image: prod-orchestrator_service
     restart: unless-stopped
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -118,7 +118,7 @@ services:
       - video-analytics-network
 
   inference_service:
-    image: misis-inference_service
+    image: prod-inference_service
     ports:
       - "8001:8001"
     restart: unless-stopped
@@ -134,7 +134,7 @@ services:
       - video-analytics-network
 
   api_service:
-    image: misis-api_service
+    image: prod-api_service
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -165,7 +165,7 @@ services:
       - video-analytics-network
 
   runner_service:
-    image: misis-runner_service
+    image: prod-runner_service
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       INFERENCE_SERVICE_URL: http://inference_service:8001
